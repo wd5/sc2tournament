@@ -9,6 +9,12 @@ class PlayerAdmin(admin.ModelAdmin):
     fields = ('name', 'character_code', 'region', 'auth_account')
 
 
+class TeamAdmin(admin.ModelAdmin):
+    """ Simple admin model to organize teams little bit more clearly """
+    class Meta:
+        ordering = ['-player', '-team']
+
+
 admin.site.register(Team)
 admin.site.register(Membership)
 admin.site.register(Player, PlayerAdmin)

@@ -19,6 +19,13 @@ MEMBERSHIP_STATUS = [
     (u'ban', u'Banned From Team')]
 
 
+TOURNAMENT_STATUS = [
+    (u'org', u'Being organized'),
+    (u'eli', u'Elimination rounds'),
+    (u'pro', u'Regular brackets... in progress'),
+    (u'com', u'Completed')
+    ]
+
 class Player(models.Model):
     """ Only name and character_code is required. battlenet_id will be populated later """
     auth_account = models.ForeignKey(User, help_text='The django auth model used for storing email & password information...')
@@ -76,3 +83,10 @@ class Membership(models.Model):
     def __unicode__(self):
         return u'%s (%s)' % (self.player, self.team)
 
+class Tournament(models.Model):
+    """ Manages the tounraments - a grouping of teams competing at a given date and time """
+    name = models.CharField(max_length=80, blank=False, help_text='The visible name of the tournament')
+    competing_teams = models.ManyToManyField(Team)
+
+    time_created = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=4, choices=TOURNAMENT_STATUS, help_text='Current status of this tournament')

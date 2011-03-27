@@ -1,5 +1,5 @@
 from django.contrib import admin
-from sc2tournament.models import Player, Team, Membership
+from sc2tournament.models import Player, Team, Membership, Tournament
 
 
 class PlayerAdmin(admin.ModelAdmin):
@@ -18,3 +18,5 @@ class TeamAdmin(admin.ModelAdmin):
 admin.site.register(Team)
 admin.site.register(Membership)
 admin.site.register(Player, PlayerAdmin)
+admin.site.register(Tournament)
+

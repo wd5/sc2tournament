@@ -40,6 +40,17 @@
 							{id:'character_code', header:'Character Code', sortable: false, dataIndex : 'character_code'},
 							{id:'region', header:'Account Region', sortable: false, dataIndex : 'region'},
 						]),
+						sm : new Ext.grid.RowSelectionModel({
+							singleSelect : true,
+							listeners : {
+								rowSelect : function (model, rowIndex, record){
+									/* When they select a row from the grid do stuff here */
+									var readableName = record.data['name'] + "#" + record.data['character_code'];
+									console.info(readableName + " was selected.");
+									Ext.getCmp('q').setValue(readableName);
+								}
+							}
+						}),
 						viewConfig : { forceFit : true },
 						width : 600,
 						stripeRows : true,
@@ -48,6 +59,11 @@
 						renderTo : "playersGrid",
 						autoHeight : true
 					});
+					/*
+					grid.getSelectionModel().on('rowselect', function () {
+						console.info('row selected');
+					});
+					*/
 				}
 				
 				
@@ -65,13 +81,26 @@
 						bodyStyle : 'padding:5px 5px 0',
 						defaults : { width : 230 },
 						items : [{
+							enableKeyEvents : true, /* Important for the listerners I need to add */
 							xtype : 'textfield',
 							fieldLabel : 'Search',
 							name : 'q',
 							id : 'q',
-							allowBlank:true
+							allowBlank:true,
+							listeners : {
+								'keypress' : {
+									fn : function(t) {
+										console.log('Searching for : ' + Ext.getCmp('q').getValue());
+										ds.load({
+											params : { q : Ext.getCmp('q').getValue() }
+										});
+									},
+									buffer : 300
+								}
+							}
 						}],
 						buttons : [{
+							/* Just for completeness purposes, it is a regular POST to force */
 							text : 'Search',
 							handler : function () {
 								ds.load({

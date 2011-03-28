@@ -1,12 +1,101 @@
 <html>
 	<head>
 		<title>Test Template in sc2tournament</title>
-		<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}js/ext/resources/css/ext-all.js" />
+		<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}js/ext/resources/css/ext-all.css" />
 		<script type="text/javascript" src="{{ STATIC_URL }}js/ext/adapter/ext/ext-base.js"></script>
 		<script type="text/javascript" src="{{ STATIC_URL }}js/ext/ext-all-debug.js"></script>
+		<script type="text/javascript">
+			Ext.onReady(function() {
+				/* Called by ExtJS once all the scripts have been loaded */
+				
+				var ds;
+				
+				function createDS() {
+					ds = new Ext.data.Store({
+						/* To hardcode or not hardcode the urls... */
+						/* Need to put this into a JS library anyways eventually */
+						proxy : new Ext.data.HttpProxy({
+							url : '/tournament/player/search/',
+							method: 'GET'
+						}),
+						reader : new Ext.data.JsonReader({
+							totalPropery : 'total',
+							root : 'players',
+							fields : ['name', 'region', 'character_code']
+						})
+					});
+				}
+				
+				createDS();
+				
+				
+				var grid;
+				
+				
+				function createGrid() {
+					grid = new Ext.grid.GridPanel({
+						store : ds,
+						cm : new Ext.grid.ColumnModel([
+							{id:'name', header:'Character Name', sortable: true, dataIndex : 'name'},
+							{id:'character_code', header:'Character Code', sortable: false, dataIndex : 'character_code'},
+							{id:'region', header:'Account Region', sortable: false, dataIndex : 'region'},
+						]),
+						viewConfig : { forceFit : true },
+						width : 600,
+						stripeRows : true,
+						title : 'Player Search Results',
+						iconCls : 'icon-grid',
+						renderTo : "playersGrid",
+						autoHeight : true
+					});
+				}
+				
+				
+				createGrid();
+				
+				
+				var searchForm;
+				
+				function createSearchForm() {
+					searchForm = new Ext.FormPanel({
+						width : 600,
+						labelWidth : 75,
+						frame : true,
+						title : 'Live Player Search',
+						bodyStyle : 'padding:5px 5px 0',
+						defaults : { width : 230 },
+						items : [{
+							xtype : 'textfield',
+							fieldLabel : 'Search',
+							name : 'q',
+							id : 'q',
+							allowBlank:true
+						}],
+						buttons : [{
+							text : 'Search',
+							handler : function () {
+								ds.load({
+									params : { q : Ext.getCmp('q').getValue() }
+								});
+							}
+						}]
+					});
+					
+					searchForm.render("searchWrapper");
+				}
+				
+				createSearchForm();
+				
+				
+			});
+		</script>
 	</head>
 	<body>
 		<p>This is a simple page to make sure that django &amp; extjs are working properly.</p>
 		<p>More specifically it is useful for making sure staticfiles or your web server is configured correctly</p>
+		<div id='wrapper'>
+			<div id='searchWrapper'></div>
+			<div id='playersGrid'></div>
+		</div>
 	</body>
 </html>

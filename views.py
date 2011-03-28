@@ -1,6 +1,7 @@
 from django.http import HttpResponse
+from django.template import Template, Context, RequestContext
+from django.shortcuts import render_to_response
 from sc2tournament.models import Player
-from django.core import serializers
 from django.utils import simplejson
 from django.db.models import Q
 
@@ -16,6 +17,7 @@ class JsonResponse(HttpResponse):
 def list_players(request, list_of_players=Player.objects.all()):
     players = {}
     players['players'] = []
+    players['total'] = len(list_of_players)
 
     # Making a non django-orm model of the data for client
     for p in list_of_players: 
@@ -27,10 +29,7 @@ def list_players(request, list_of_players=Player.objects.all()):
             u'achievement_points' : p.achievement_points,
             u'last_synced'       : p.last_sync.strftime('%Y-%m-%dT%H:%M:%S')
         })
-    return JsonResponse(players) 
-
-
-
+    return JsonResponse(players)
 
 def search(request):
     query = request.GET.get('q', '')
@@ -43,3 +42,11 @@ def search(request):
     else:
         results = []
     return list_players(request, results)
+
+def test_search_page(request):
+    values = {
+        'title' : u'Sample Page',
+    }
+    return render_to_response('test.html',
+                              values,
+                              context_instance=RequestContext(request))

@@ -9,14 +9,17 @@ REGIONS = [
     (u'tw', u'Taiwan'),
     (u'sea',u'Southeast Asia'),
     (u'ru', u'Russia'),
-    (u'la', u'Latin America')]
+    (u'la', u'Latin America')
+]
+
 
 
 MEMBERSHIP_STATUS = [
     (u'def', u'Default'),
     (u'pen', u'Pending Approval'),
     (u'app', u'Approved'),
-    (u'ban', u'Banned From Team')]
+    (u'ban', u'Banned From Team')
+]
 
 
 TOURNAMENT_STATUS = [
@@ -24,11 +27,12 @@ TOURNAMENT_STATUS = [
     (u'eli', u'Elimination rounds'),
     (u'pro', u'Regular brackets... in progress'),
     (u'com', u'Completed')
-    ]
+]
 
 class Player(models.Model):
     """ Only name and character_code is required. battlenet_id will be populated later """
-    auth_account = models.ForeignKey(User, help_text='The django auth model used for storing email & password information...')
+    auth_account = models.ForeignKey(User, help_text='The django auth model used'
+                                     'for storing email & password information...')
 
     name = models.CharField(max_length=40, help_text='The in game name of the player')
     character_code = models.IntegerField(null=False, help_text='The 3 - 5 digit code representing a players code')

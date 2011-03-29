@@ -32,7 +32,8 @@ def list_players(request, list_of_players=Player.objects.all()):
     return JsonResponse(players)
 
 def search(request):
-    query = request.GET.get('q', '')
+    query = request.GET.get('query', '')
+
     if query:
         qset = (
             Q(name__icontains=query) |

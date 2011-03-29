@@ -4,6 +4,7 @@
 		<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}js/ext/resources/css/ext-all.css" />
 		<script type="text/javascript" src="{{ STATIC_URL }}js/ext/adapter/ext/ext-base.js"></script>
 		<script type="text/javascript" src="{{ STATIC_URL }}js/ext/ext-all-debug.js"></script>
+		<script type="text/javascript" src="{{ STATIC_URL }}js/ext/examples/form/states.js"></script>
 		<script type="text/javascript">
 			Ext.onReady(function() {
 				/* Called by ExtJS once all the scripts have been loaded */
@@ -92,7 +93,7 @@
 									fn : function(t) {
 										console.log('Searching for : ' + Ext.getCmp('q').getValue());
 										ds.load({
-											params : { q : Ext.getCmp('q').getValue() }
+											params : { query : Ext.getCmp('q').getValue() }
 										});
 									},
 									buffer : 300
@@ -104,7 +105,7 @@
 							text : 'Search',
 							handler : function () {
 								ds.load({
-									params : { q : Ext.getCmp('q').getValue() }
+									params : { query : Ext.getCmp('q').getValue() }
 								});
 							}
 						}]
@@ -116,6 +117,60 @@
 				createSearchForm();
 				
 				
+				
+				
+				
+				//now lets try to do something similar with an XTemplate and Combobox
+    			
+    			var ds2 = new Ext.data.Store({
+					/* To hardcode or not hardcode the urls... */
+					/* Need to put this into a JS library anyways eventually */
+					proxy : new Ext.data.HttpProxy({
+						url : '/tournament/player/search/',
+						method: 'GET'
+					}),
+					reader : new Ext.data.JsonReader({
+						totalPropery : 'total',
+						root : 'players',
+						fields : ['name', 'region', 'character_code']
+					})
+				});
+    
+				var playerTemplate = new Ext.XTemplate(
+					'<tpl for="."><div class="search-item"><h3>{name}</h3>{character_code}</div></tpl>'
+				);
+				
+				
+				var searchCombo = new Ext.form.ComboBox({
+					id : 'player-combo',
+					store : ds2,
+					displayField : 'name',
+					emptyText : 'Who do you want to add?',
+					typeAhead : false,
+					width : 600,
+					//pageSize : 10,
+					hideTrigger : true,
+					tpl : playerTemplate,
+					applyTo : 'player-combo',
+					minChars : 0,
+					itemSelector : 'div.search-item',
+					listeners : {
+						'select' : function(combo, record, index) {
+							var readableName = record.data.name + "#" + record.data.character_code;
+							console.info("User selected " + readableName);
+							Ext.getCmp('player-combo').setValue(readableName);
+						}
+					}
+					/* Not sure if I want to override the default onSelect, i should use listener instead... */
+					/*
+					onSelect : function(record) {
+						var readableName = record.data.name + "#" + record.data.character_code;
+						console.log('onSelect combobox selected ' + readableName);
+						Ext.getCmp('player-combo').setValue(readableName);
+					}
+					*/
+				});
+				
 			});
 		</script>
 	</head>
@@ -125,6 +180,9 @@
 		<div id='wrapper'>
 			<div id='searchWrapper'></div>
 			<div id='playersGrid'></div>
+			<br /><br /><br /><br />
+			<input type="text" id='player-combo' size="100" />
+			
 		</div>
 	</body>
 </html>

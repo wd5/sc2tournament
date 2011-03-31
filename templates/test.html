@@ -1,5 +1,51 @@
 <html>
 	<head>
+	<style type="text/css">
+	
+	div.badge {
+		position: relative;
+		padding: 10px 10px;
+		width: 375px;
+		height: 75px;
+	}
+	div.badge .portrait {
+		/* all portraits need w/h */
+		width: 75px;
+		height: 75px;
+		
+		/* unique per badge */
+		background-image: url('{{ STATIC_URL }}img/portraits-2-75.jpg');
+		background-position: -0px -0px;
+	}
+	div.badge .title .name {
+		position: absolute;
+		top: 20px;
+		left: 100px;
+		width: 275px;
+		font-family: sans-serif;
+		font-size: large;
+		font-weight: bold;
+		text-align: right;
+	}
+	
+	div.badge .title .code {
+		/* for the character code part of a players name. */
+		font-weight: 400;
+		font-style: italic;
+	}
+	
+	div.badge .title .extra {
+		position: absolute;
+		top: 45px;
+		left: 100px;
+		width: 285px;
+		height: 40px;
+		font-style: italic;
+		font-size: small;
+		text-align: right;
+	}
+
+	</style>
 		<title>Test Template in sc2tournament</title>
 		<link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}js/ext/resources/css/ext-all.css" />
 		<script type="text/javascript" src="{{ STATIC_URL }}js/ext/adapter/ext/ext-base.js"></script>
@@ -22,7 +68,7 @@
 						reader : new Ext.data.JsonReader({
 							totalPropery : 'total',
 							root : 'players',
-							fields : ['name', 'region', 'character_code']
+							fields : ['name', 'region', 'character_code', 'portrait_row', 'portrait_column', 'portrait_iconset']
 						})
 					});
 				}
@@ -40,6 +86,9 @@
 							{id:'name', header:'Character Name', sortable: true, dataIndex : 'name'},
 							{id:'character_code', header:'Character Code', sortable: false, dataIndex : 'character_code'},
 							{id:'region', header:'Account Region', sortable: false, dataIndex : 'region'},
+							{id:'portrait_iconset', header:'File containing portrait', sortable: false, dataIndex : 'portrait_iconset'},
+							{id:'portrait_row', header:'Portrait Row', sortable: false, dataIndex : 'portrait_row'},
+							{id:'portrait_column', header:'Portrait Column', sortable: false, dataIndex : 'portrait_column'},
 						]),
 						sm : new Ext.grid.RowSelectionModel({
 							singleSelect : true,
@@ -132,13 +181,32 @@
 					reader : new Ext.data.JsonReader({
 						totalPropery : 'total',
 						root : 'players',
-						fields : ['name', 'region', 'character_code']
+						fields : ['name', 'region', 'character_code', 'last_sync', 'achievement_points', 'portrait_iconset', 'portrait_row', 'portrait_column']
 					})
 				});
     
 				var playerTemplate = new Ext.XTemplate(
 					'<tpl for="."><div class="search-item"><h3>{name}</h3>{character_code}</div></tpl>'
 				);
+				
+				var newPlayerTemplate = new Ext.XTemplate(
+				'<tpl for="."> \
+				<div class="badge"> \
+					<div class="portrait" style="background-image: url(\'{{ STATIC_URL }}img/portraits-{portrait_iconset}-75.jpg\'); background-position: -{portrait_column * 75} -{portrait_row * 75};">&nbsp;</div> \
+					<div class="title"> \
+						<span class="name"> \
+							{name}<span class="code">#{character_code}</span> \
+						</span> \
+						<br/> \
+						<span class="extra"> \
+							Last profile sync : {last_sync} \
+							<br/> \
+							Achievement points : {achievement_points} \
+							<br/> \
+						</span> \
+					</div> \
+				</div> \
+				</tpl>');
 				
 				
 				var searchCombo = new Ext.form.ComboBox({
@@ -147,13 +215,13 @@
 					displayField : 'name',
 					emptyText : 'Who do you want to add?',
 					typeAhead : false,
-					width : 600,
+					width : 415,
 					//pageSize : 10,
 					hideTrigger : true,
-					tpl : playerTemplate,
+					tpl : newPlayerTemplate,
 					applyTo : 'player-combo',
 					minChars : 0,
-					itemSelector : 'div.search-item',
+					itemSelector : 'div.badge',
 					listeners : {
 						'select' : function(combo, record, index) {
 							var readableName = record.data.name + "#" + record.data.character_code;
@@ -180,8 +248,26 @@
 		<div id='wrapper'>
 			<div id='searchWrapper'></div>
 			<div id='playersGrid'></div>
-			<br /><br /><br /><br />
+			<br /><br />
+			<div class="badge" id="test_badge">
+				<div class="portrait">&nbsp;</div>
+				<div class="title">
+					<span class="name">
+						{{ badge_test.name }}<span class="code">#{{ badge_test.character_code }}</span>
+					</span>
+					<br/>
+					<span class="extra">
+						Last profile sync : {{ badge_test.last_sync|date:"M fa Y" }}
+						<br/>
+						Achievement points : {{ badge_test.achievement_points }}
+						<br/>
+					</span>
+				</div>
+			</div>
+			<br /><br />
 			<input type="text" id='player-combo' size="100" />
+			
+			
 			
 		</div>
 	</body>

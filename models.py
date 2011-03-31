@@ -45,11 +45,21 @@ class Player(models.Model):
     last_sync = models.DateTimeField(blank=True, null=True, auto_now_add=True) 
     join_date = models.DateTimeField(auto_now_add=True)
 
+    #portrait information - maybe make seperate table to normalize(?)
+    port_iconset = models.IntegerField(null=False, default=0)
+    port_row     = models.IntegerField(null=False, default=0)
+    port_column  = models.IntegerField(null=False, default=0)
+
     @staticmethod
     def createPlayer(name, code, region, account):
         """ Static method shorthand for creating a player """
         return Player(name=name, character_code=code, region=region, auth_account=account)
 
+    def generate_badge_html(self):
+        """ This function generates a div containing displayable HTML for a badge """
+        """ Not sure if there is a more logical place to put this code, maybe in  """
+        """ the view or another utility type file. """
+        return u''
     def __unicode__(self):
         return u'%s <%d> %s' % (self.name, self.character_code, self.region)
 

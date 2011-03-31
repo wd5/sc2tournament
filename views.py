@@ -26,8 +26,11 @@ def list_players(request, list_of_players=Player.objects.all()):
             u'character_code'    : p.character_code, 
             u'region'            : p.region,
             u'battlenet_id'      : p.battlenet_id,
-            u'achievement_points' : p.achievement_points,
-            u'last_synced'       : p.last_sync.strftime('%Y-%m-%dT%H:%M:%S')
+            u'achievement_points': p.achievement_points,
+            u'last_sync'         : p.last_sync.strftime('%Y-%m-%dT%H:%M:%S'),
+            u'portrait_iconset'  : p.port_iconset,
+            u'portrait_row'      : p.port_row,
+            u'portrait_column'   : p.port_column,
         })
     return JsonResponse(players)
 
@@ -45,8 +48,11 @@ def search(request):
     return list_players(request, results)
 
 def test_search_page(request):
+    #SweetWheat is always the first player in our test code
+    sw = Player.objects.all()[0]
     values = {
         'title' : u'Sample Page',
+        'badge_test' : sw,
     }
     return render_to_response('test.html',
                               values,

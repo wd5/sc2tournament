@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
-
+from math import log
+from operator import mod
 
 REGIONS = [
     (u'us', u'United States'),
@@ -13,7 +14,6 @@ REGIONS = [
 ]
 
 
-
 MEMBERSHIP_STATUS = [
     (u'def', u'Default'),
     (u'pen', u'Pending Approval'),
@@ -21,11 +21,21 @@ MEMBERSHIP_STATUS = [
     (u'ban', u'Banned From Team')
 ]
 
-
 TOURNAMENT_STATUS = [
     (u'org', u'Being organized'),
     (u'eli', u'Elimination rounds'),
     (u'pro', u'Regular brackets... in progress'),
+    (u'com', u'Completed')
+]
+
+SET_TYPES = (
+    (u'eli', u'Elimination Round'),
+    (u'reg', u'Regular RO type set')
+)
+
+SET_STATUS = [
+    (u'not', u'Not started yet'),
+    (u'pro', u'Match is in progress'),
     (u'com', u'Completed')
 ]
 
@@ -97,10 +107,84 @@ class Membership(models.Model):
     def __unicode__(self):
         return u'%s (%s)' % (self.player, self.team)
 
+
 class Tournament(models.Model):
     """ Manages the tounraments - a grouping of teams competing at a given date and time """
     name = models.CharField(max_length=80, blank=False, help_text='The visible name of the tournament')
     competing_teams = models.ManyToManyField(Team)
 
     time_created = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=4, choices=TOURNAMENT_STATUS, help_text='Current status of this tournament')
+    status = models.CharField(max_length=4, choices=TOURNAMENT_STATUS,
+                              default=TOURNAMENT_STATUS[0][0],
+                              help_text='Current status of this tournament')
+    best_of = models.IntegerField(default=3, help_text='Matches required before its considered won')
+
+    def __unicode__(self):
+        if not self.name:
+            return u'Unnamed Tournament (%s)' % (self.competing_teams.all())
+        return u'%s (%s)' % (self.name, self.competing_teams.all())
+
+    def start_tournament(self):
+        """ Starts a tournament. """
+        """ Sets the status appropriately, and creates all the sets for the tournament as """
+        """ well as the elimination rounds if necessary """
+
+        #we only can start a tournament if we have a base 2 amount of players
+        #later we will add elimination rounds to help deal with realistic conditions
+        if mod(log(self.competing_teams.count(), 2), 1) != 0:
+            raise ValueError('There wasn\'t enough teams in tournament %s to start.  '
+                             'Only %d teams.' % (self.name, set_counter))
+
+        set_counter = self.competing_teams.count() - 1
+        self.status = TOURNAMENT_STATUS[2][0]
+        
+        while set_counter > 0:
+            #assume that there are a log2 based amount of teams... no elmination rounds yet.
+            s = Set()
+            s.in_tournament = self
+            s.set_number = set_counter
+            set_counter -= 1
+            s.save()
+
+        set_counter = self.competing_teams.count() - 1 
+        for t in self.competing_teams.all():
+            #add a team in the competing teams to the set, filling backwards.
+            #picture the matches as a perfect binary tree, 1 being root and counting
+            #left to right down the tree.
+            s = self.all_sets_in_tournament.get(set_number=set_counter)
+            
+            #set this match to being in progress
+            s.set_status = SET_STATUS[1][0]
+
+            s.competing_teams.add(t)
+            if s.competing_teams.count() == 2:
+                #if we added two teams to the set. decrease our set_counter
+                set_counter -= 1
+
+            #make sure the set saves the status change
+            s.save()
+
+
+class Set(models.Model):
+    """ Sets exist four tournaments. Need to keep track of the which when matches are completed """
+    """ Each match can have as many teams as it wants to... but UI will support ONLY 2 """ 
+    in_tournament = models.ForeignKey(Tournament, related_name='all_sets_in_tournament', 
+                                      help_text='From this tournament')
+    set_type = models.CharField(max_length=3, choices=SET_TYPES, default=SET_TYPES[1][0],
+                                help_text='A status tracker for when we eventually do elmination rounds')
+    set_status = models.CharField(max_length=3,  choices=SET_STATUS, default=SET_STATUS[0][0],
+                                  help_text='Has it started? Is it over? Is it a placeholder?')
+    winner = models.ForeignKey(Team, null=True, blank=True, related_name='+',
+                               help_text='The team that one this set')
+    set_number = models.IntegerField(help_text='Used to represent the tournament tree aka brackets')
+    competing_teams = models.ManyToManyField(Team, related_name='all_set_history', 
+                                             help_text='All the teams in this match.. should be 2...')
+
+class Match(models.Model):
+    """ Each match is part of a set and represents a game """
+    """ Maybe we can add replay file uploads and stuff later here if interested """
+    """ For now this will be a dumb class, just used for select count(*) type things """
+    """ so it doesn't matter which match is added or removed """
+    in_set = models.ForeignKey(Set, related_name='matches', 
+                               help_text='The set this was from')
+    winner = models.ForeignKey(Team, null=True, blank=True, help_text='The team that one this match')

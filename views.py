@@ -1,7 +1,7 @@
 from django.http import HttpResponse
 from django.template import Template, Context, RequestContext
 from django.shortcuts import render_to_response
-from sc2tournament.models import Player
+from sc2tournament.models import Player, Tournament, Team
 from django.utils import simplejson
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required, permission_required, user_passes_test
@@ -15,27 +15,20 @@ class JsonResponse(HttpResponse):
         super(JsonResponse, self).\
              __init__(content, mimetype='application/json; charset=utf8')
 
-def list_players(request, list_of_players=Player.objects.all()):
+@login_required
+def player_list(request, list_of_players=Player.objects.all()):
     players = {}
     players['players'] = []
     players['total'] = len(list_of_players)
 
     # Making a non django-orm model of the data for client
     for p in list_of_players: 
-        players['players'].append({
-            u'name'              : p.name, 
-            u'character_code'    : p.character_code, 
-            u'region'            : p.region,
-            u'battlenet_id'      : p.battlenet_id,
-            u'achievement_points': p.achievement_points,
-            u'last_sync'         : p.last_sync.strftime('%Y-%m-%dT%H:%M:%S'),
-            u'portrait_iconset'  : p.port_iconset,
-            u'portrait_row'      : p.port_row,
-            u'portrait_column'   : p.port_column,
-        })
+        players['players'].append(p.as_dictionary())
+
     return JsonResponse(players)
 
-def search(request):
+@login_required
+def player_search(request):
     query = request.GET.get('query', '')
 
     if query:
@@ -46,7 +39,48 @@ def search(request):
         results = Player.objects.filter(qset).distinct()
     else:
         results = []
-    return list_players(request, results)
+    return player_list(request, results)
+
+def team_list(request, list_of_teams=Team.objects.all()):
+    teams = {}
+    teams['teams'] = []
+    teams['total'] = len(list_of_teams)
+
+    for t in list_of_teams:
+        teams['teams'].append(t.as_dictionary())
+
+    return JsonResponse(teams)
+
+def team_search(request):
+    query = request.GET.get('query', '')
+    
+    if query:
+        qset = ( Q(name__icontains=query) )
+        results = Team.objects.filter(qset).distinct()
+    else:
+        results = []
+
+    return team_list(request, results)
+
+def tournament_list(request, list_of_tournaments=Tournament.objects.all()):
+    tournaments = {}
+    tournaments['tournaments'] = []
+    tournaments['total'] = len(list_of_tournaments)
+
+    for t in list_of_tournaments:
+        tournaments['tournaments'].append(t.as_dictionary())
+
+    return JsonResponse(tournaments)
+
+def tournament_search(request):
+    query = request.GET.get('query', '')
+
+    if query:
+        qset = ( Q(name__icontains=query) )
+        results = Tournament.objects.filter(qset).distinct()
+    else:
+        results = []
+    return tournament_list(request, results)
 
 @login_required
 def test_search_page(request):
@@ -58,3 +92,4 @@ def test_search_page(request):
     }
     return render_to_response('test.html', values,
                               context_instance=RequestContext(request))
+

@@ -41,9 +41,9 @@ SET_STATUS = [
 class Player(models.Model):
     """ Only name and character_code is required. battlenet_id will be pop- """
     """ ulated later """
-    user = models.ForeignKey(User, unique=True,
-                                     help_text='The django auth model used for'
-                                     'storing email & password information...')
+    user = models.OneToOneField(User, 
+                                help_text='The django auth model used for'
+                                'storing email & password information...')
 
     name = models.CharField("Character name", max_length=40,
                             help_text='The in game name of the player')
@@ -83,6 +83,19 @@ class Player(models.Model):
         return Player(name=name, character_code=code, region=region, 
                       user=account)
 
+    def as_dictionary(self):
+        return {
+            u'name'              : self.name, 
+            u'character_code'    : self.character_code, 
+            u'region'            : self.region,
+            u'battlenet_id'      : self.battlenet_id,
+            u'achievement_points': self.achievement_points,
+            u'last_sync'         : self.last_sync.strftime('%Y-%m-%dT%H:%M:%S'),
+            u'portrait_iconset'  : self.port_iconset,
+            u'portrait_row'      : self.port_row,
+            u'portrait_column'   : self.port_column,
+        }
+
     def generate_badge_html(self):
         """ This function generates a div containing displayable HTML for a badge """
         """ Not sure if there is a more logical place to put this code, maybe in  """
@@ -110,6 +123,13 @@ class Team(models.Model):
     def createTeam(name, leader):
         """ Static method shorthand for creating a team """
         return Team(name=name, leader=leader)
+
+    def as_dictionary(self):
+        return {
+            u'leader' : self.leader.as_dictionary(),
+            u'name'   : self.name,
+            u'members': [x.as_dictionary() for x in self.members.all()],
+        }
 
     def __unicode__(self):
         if not self.name:
@@ -147,10 +167,18 @@ class Tournament(models.Model):
     status = models.CharField(max_length=4, choices=TOURNAMENT_STATUS,
                               default=TOURNAMENT_STATUS[0][0],
                               help_text='Current status of this tournament')
-    best_of = models.IntegerField(default=3, help_text='Matches required before its considered won')
+    best_of = models.IntegerField(default=3, help_text='Matches required before its considered won, typically 3, 5, or 7')
 
     class Meta:
         db_table = 'tournaments'
+
+    def as_dictionary(self):
+        return {
+            u'name' : self.name,
+            u'competing_teams' : [x.as_dictionary() for x in self.competing_teams.all()],
+            u'status' : self.status,
+            u'best_of' : self.best_of,
+        }
 
     def __unicode__(self):
         if not self.name:

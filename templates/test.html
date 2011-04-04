@@ -14,6 +14,7 @@
 		height: 75px;
 		
 		/* unique per badge */
+		/* Provides fallback portrait */
 		background-image: url('{{ STATIC_URL }}img/portraits-2-75.jpg');
 		background-position: -0px -0px;
 	}
@@ -62,7 +63,7 @@
 						/* To hardcode or not hardcode the urls... */
 						/* Need to put this into a JS library anyways eventually */
 						proxy : new Ext.data.HttpProxy({
-							url : '/tournament/player/search/',
+							url : '{% url sc2tournament.views.player_search %}',
 							method: 'GET'
 						}),
 						reader : new Ext.data.JsonReader({
@@ -172,10 +173,8 @@
 				//now lets try to do something similar with an XTemplate and Combobox
     			
     			var ds2 = new Ext.data.Store({
-					/* To hardcode or not hardcode the urls... */
-					/* Need to put this into a JS library anyways eventually */
 					proxy : new Ext.data.HttpProxy({
-						url : '/tournament/player/search/',
+						url : '{% url sc2tournament.views.player_search %}',
 						method: 'GET'
 					}),
 					reader : new Ext.data.JsonReader({
@@ -245,6 +244,7 @@
 	<body>
 		<p>This is a simple page to make sure that django &amp; extjs are working properly.</p>
 		<p>More specifically it is useful for making sure staticfiles or your web server is configured correctly</p>
+		<p>You are logged in as {{ user }}</p>
 		<div id='wrapper'>
 			<div id='searchWrapper'></div>
 			<div id='playersGrid'></div>

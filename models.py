@@ -15,7 +15,6 @@ REGIONS = [
 
 
 MEMBERSHIP_STATUS = [
-    (u'def', u'Default'),
     (u'pen', u'Pending Approval'),
     (u'app', u'Approved'),
     (u'ban', u'Banned From Team')
@@ -40,18 +39,29 @@ SET_STATUS = [
 ]
 
 class Player(models.Model):
-    """ Only name and character_code is required. battlenet_id will be populated later """
-    auth_account = models.ForeignKey(User, help_text='The django auth model used'
-                                     'for storing email & password information...')
+    """ Only name and character_code is required. battlenet_id will be pop- """
+    """ ulated later """
+    user = models.ForeignKey(User, unique=True,
+                                     help_text='The django auth model used for'
+                                     'storing email & password information...')
 
-    name = models.CharField(max_length=40, help_text='The in game name of the player')
-    character_code = models.IntegerField(null=False, help_text='The 3 - 5 digit code representing a players code')
-    battlenet_id = models.IntegerField(blank=True, default=0)
-    region = models.CharField(max_length=4, choices=REGIONS, help_text='The region of this battle net account')
+    name = models.CharField("Character name", max_length=40,
+                            help_text='The in game name of the player')
+    character_code = models.IntegerField(null=False, help_text='The 3-5 digit '
+                                         'code representing a players code')
+    battlenet_id = models.IntegerField("Battle.net Id", editable=False,
+                                       blank=True, default=0)
+    region = models.CharField("Geographic Location", max_length=4,
+                              choices=REGIONS,
+                              help_text='The region of this battle net account')
     achievement_points = models.IntegerField(blank=True, default=0)
 
-    # Information related to last sync and sc2rank's age of the information replicated
-    sc2ranks_last_updated = models.DateTimeField(blank=True, auto_now_add=True)    #the time sc2ranks was updated different than our sync time
+    # Information related to last sync and sc2rank's age of the information 
+    # replicated
+    sc2ranks_last_updated = models.DateTimeField("Age of profile information", 
+                                                 editable=False, blank=True, 
+                                                 auto_now_add=True)
+                                                 
     last_sync = models.DateTimeField(blank=True, null=True, auto_now_add=True) 
     join_date = models.DateTimeField(auto_now_add=True)
 
@@ -60,10 +70,18 @@ class Player(models.Model):
     port_row     = models.IntegerField(null=False, default=0)
     port_column  = models.IntegerField(null=False, default=0)
 
+    class Meta:
+        #Makes a componded key for players. Works with form validation.
+        unique_together = (
+            ('name','character_code'),
+        )
+        db_table = 'players'
+
     @staticmethod
     def createPlayer(name, code, region, account):
         """ Static method shorthand for creating a player """
-        return Player(name=name, character_code=code, region=region, auth_account=account)
+        return Player(name=name, character_code=code, region=region, 
+                      user=account)
 
     def generate_badge_html(self):
         """ This function generates a div containing displayable HTML for a badge """
@@ -74,11 +92,19 @@ class Player(models.Model):
         return u'%s <%d> %s' % (self.name, self.character_code, self.region)
 
 class Team(models.Model):
-    """ A team is a collection of Players; organized by a specific player, that can participate in tournaments. """
-    leader = models.ForeignKey(Player, help_text='The player that organized this team', related_name='+')
+    """ A team is a collection of Players; organized by a specific player, """
+    """ that can participate in tournaments. """
+    leader = models.ForeignKey(Player, help_text='The player that organized'
+                               'this team', related_name='+')
     name = models.CharField(max_length = 80, blank=True)
     members = models.ManyToManyField(Player, through='Membership')
     date_formed = models.DateField(auto_now_add=True)
+
+    class Meta:
+        unique_together = (
+            ('leader', 'name'),
+        )
+        db_table = 'teams'
 
     @staticmethod
     def createTeam(name, leader):
@@ -97,7 +123,11 @@ class Membership(models.Model):
     player = models.ForeignKey(Player)
 
     date_player_joined = models.DateField(auto_now_add=True)
-    status = models.CharField(max_length=3, choices=MEMBERSHIP_STATUS, default=MEMBERSHIP_STATUS[0][0]) #default status is def
+    status = models.CharField(max_length=3, choices=MEMBERSHIP_STATUS, 
+                              default=MEMBERSHIP_STATUS[0][0]) #default status is def
+
+    class Meta:
+        db_table = 'team_members'
 
     @staticmethod
     def createMembership(player, team):
@@ -118,6 +148,9 @@ class Tournament(models.Model):
                               default=TOURNAMENT_STATUS[0][0],
                               help_text='Current status of this tournament')
     best_of = models.IntegerField(default=3, help_text='Matches required before its considered won')
+
+    class Meta:
+        db_table = 'tournaments'
 
     def __unicode__(self):
         if not self.name:
@@ -166,19 +199,28 @@ class Tournament(models.Model):
 
 
 class Set(models.Model):
-    """ Sets exist four tournaments. Need to keep track of the which when matches are completed """
-    """ Each match can have as many teams as it wants to... but UI will support ONLY 2 """ 
-    in_tournament = models.ForeignKey(Tournament, related_name='all_sets_in_tournament', 
+    """ Sets exist four tournaments. Need to keep track of the which when """
+    """ matches are completed.  Each match can have as many teams as is   """
+    """ needed, but the UI will only support two. """
+
+    in_tournament = models.ForeignKey(Tournament, 
+                                      related_name='all_sets_in_tournament', 
                                       help_text='From this tournament')
-    set_type = models.CharField(max_length=3, choices=SET_TYPES, default=SET_TYPES[1][0],
+    set_type = models.CharField(max_length=3, choices=SET_TYPES,
+                                default=SET_TYPES[1][0],
                                 help_text='A status tracker for when we eventually do elmination rounds')
-    set_status = models.CharField(max_length=3,  choices=SET_STATUS, default=SET_STATUS[0][0],
+    set_status = models.CharField(max_length=3,  choices=SET_STATUS,
+                                  default=SET_STATUS[0][0],
                                   help_text='Has it started? Is it over? Is it a placeholder?')
     winner = models.ForeignKey(Team, null=True, blank=True, related_name='+',
                                help_text='The team that one this set')
     set_number = models.IntegerField(help_text='Used to represent the tournament tree aka brackets')
-    competing_teams = models.ManyToManyField(Team, related_name='all_set_history', 
+    competing_teams = models.ManyToManyField(Team,
+                                             related_name='all_set_history', 
                                              help_text='All the teams in this match.. should be 2...')
+
+    class Meta:
+        db_table = 'sets_in_tournaments'
 
 class Match(models.Model):
     """ Each match is part of a set and represents a game """
@@ -187,4 +229,8 @@ class Match(models.Model):
     """ so it doesn't matter which match is added or removed """
     in_set = models.ForeignKey(Set, related_name='matches', 
                                help_text='The set this was from')
-    winner = models.ForeignKey(Team, null=True, blank=True, help_text='The team that one this match')
+    winner = models.ForeignKey(Team, null=True, blank=True,
+                               help_text='The team that one this match')
+
+    class Meta:
+        db_table = 'matches_in_set'

@@ -4,6 +4,7 @@ from django.shortcuts import render_to_response
 from sc2tournament.models import Player
 from django.utils import simplejson
 from django.db.models import Q
+from django.contrib.auth.decorators import login_required, permission_required, user_passes_test
 
 class JsonResponse(HttpResponse):
     """ A potentially useful class I found on stackoverflow that would allow
@@ -47,6 +48,7 @@ def search(request):
         results = []
     return list_players(request, results)
 
+@login_required
 def test_search_page(request):
     #SweetWheat is always the first player in our test code
     sw = Player.objects.all()[0]
@@ -54,6 +56,5 @@ def test_search_page(request):
         'title' : u'Sample Page',
         'badge_test' : sw,
     }
-    return render_to_response('test.html',
-                              values,
+    return render_to_response('test.html', values,
                               context_instance=RequestContext(request))

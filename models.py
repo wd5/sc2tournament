@@ -96,11 +96,6 @@ class Player(models.Model):
             u'portrait_column'   : self.port_column,
         }
 
-    def generate_badge_html(self):
-        """ This function generates a div containing displayable HTML for a badge """
-        """ Not sure if there is a more logical place to put this code, maybe in  """
-        """ the view or another utility type file. """
-        return u''
     def __unicode__(self):
         return u'%s <%d> %s' % (self.name, self.character_code, self.region)
 
@@ -159,15 +154,21 @@ class Membership(models.Model):
 
 
 class Tournament(models.Model):
-    """ Manages the tounraments - a grouping of teams competing at a given date and time """
-    name = models.CharField(max_length=80, blank=False, help_text='The visible name of the tournament')
+    """
+    Tounraments are a grouping of teams competing at a given date and time.
+    """
+    name = models.CharField(max_length=80, blank=False,
+                            help_text='The visible name of the tournament')
     competing_teams = models.ManyToManyField(Team)
-
     time_created = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=4, choices=TOURNAMENT_STATUS,
                               default=TOURNAMENT_STATUS[0][0],
                               help_text='Current status of this tournament')
-    best_of = models.IntegerField(default=3, help_text='Matches required before its considered won, typically 3, 5, or 7')
+    best_of = models.IntegerField(default=3,
+                                  help_text='Matches required before its considered won, typically 3, 5, or 7')
+    winner = models.ForeignKey(Team, blank=True, null=True,
+                               related_name='+',
+                               help_text='The team that one the match!')
 
     class Meta:
         db_table = 'tournaments'
@@ -184,6 +185,88 @@ class Tournament(models.Model):
         if not self.name:
             return u'Unnamed Tournament (%s)' % (self.competing_teams.all())
         return u'%s (%s)' % (self.name, self.competing_teams.all())
+
+
+    def win_match(self, team):
+        """
+        When a team wins a match in a set, this method will record the victory
+        by finding out the set they are in and inserting a new match record.
+        If this match also decided the victor of the set, this method will
+        make the apporpriate calls to win_set()
+        """
+        #find the teams current position in tourney
+        s = self.find_teams_current_set(team)
+
+        #make a new match for them to win
+        m = Match()
+        m.in_set = s
+        m.winner = team
+        m.save()
+
+        #see if they won the set.
+        if s.matches.count() > (self.best_of / 2):
+            self.win_set(team)
+        
+
+
+    def win_set(self, team):
+        """
+        When a team wins a set, this method will promote them to next bracket
+        or win them the tournament if there are no more sets to be had.
+
+        Notes:
+        Doesn't do much fail safe checking.  Can promote more teams to a set
+        than is supported among other things...
+        """
+
+        #find there fartherest progressed match in the tournament.
+        s = self.find_teams_current_set(team)
+
+        #if they aren't in this set... then maybe its an attacker?
+        if s == None:
+            return None
+
+        #they are in this tournament. lets promote them.
+        #current sets status should be set to completed.
+        s.set_status = SET_STATUS[2][0]
+        s.winner = team
+        s.save()
+
+        #calculate next Ro Set they should jump into...
+        next_set = s.set_number / 2
+
+        #maybe the tournament is over?
+        if next_set == 0:
+            #yay they did it!
+            self.status = TOURNAMENT_STATUS[3][0]
+            self.winner = team
+            self.save()
+            return None
+
+        #the tournament is not over, so put them into the next set...
+        ns = self.all_sets_in_tournament.get(set_number=next_set)
+        ns.competing_teams.add(team)
+
+        #if there are two players in this next set, set it to started
+        if ns.competing_teams.count() == 2:
+            ns.set_status = SET_STATUS[1][0]
+            ns.save()
+
+    def find_teams_current_set(self, team):
+        """
+        This method is a helper that will find out which set the team is curr-
+        ently playing in.  If the team is not found, it will return None.
+        """
+
+        #even though set_number is default, make sure we get this order
+        #so that we always find the farthest point this team has reached
+        #in the tournament
+        
+        for s in self.all_sets_in_tournament.order_by('set_number'):
+            if team in s.competing_teams.all():
+                return s
+        
+        return None
 
     def start_tournament(self):
         """ Starts a tournament. """
@@ -240,7 +323,8 @@ class Set(models.Model):
     set_status = models.CharField(max_length=3,  choices=SET_STATUS,
                                   default=SET_STATUS[0][0],
                                   help_text='Has it started? Is it over? Is it a placeholder?')
-    winner = models.ForeignKey(Team, null=True, blank=True, related_name='+',
+    winner = models.ForeignKey(Team, null=True, blank=True,
+                               related_name='+',
                                help_text='The team that one this set')
     set_number = models.IntegerField(help_text='Used to represent the tournament tree aka brackets')
     competing_teams = models.ManyToManyField(Team,
@@ -249,6 +333,8 @@ class Set(models.Model):
 
     class Meta:
         db_table = 'sets_in_tournaments'
+        #sort by ascending by default.
+        ordering = ['set_number']
 
 class Match(models.Model):
     """ Each match is part of a set and represents a game """

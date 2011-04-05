@@ -38,6 +38,14 @@ SET_STATUS = [
     (u'com', u'Completed')
 ]
 
+BEST_OF_CHOICES = [
+    (1, u'Single Round'),
+    (3, u'Best of 3'),
+    (5, u'Best of 5'),
+    (7, u'Best of 7'),
+]
+
+
 class Player(models.Model):
     """ Only name and character_code is required. battlenet_id will be pop- """
     """ ulated later """
@@ -164,7 +172,7 @@ class Tournament(models.Model):
     status = models.CharField(max_length=4, choices=TOURNAMENT_STATUS,
                               default=TOURNAMENT_STATUS[0][0],
                               help_text='Current status of this tournament')
-    best_of = models.IntegerField(default=3,
+    best_of = models.IntegerField(default=3, choices=BEST_OF_CHOICES,
                                   help_text='Matches required before its considered won, typically 3, 5, or 7')
     winner = models.ForeignKey(Team, blank=True, null=True,
                                related_name='+',
@@ -197,14 +205,18 @@ class Tournament(models.Model):
         #find the teams current position in tourney
         s = self.find_teams_current_set(team)
 
-        #make a new match for them to win
-        m = Match()
-        m.in_set = s
-        m.winner = team
-        m.save()
+        #if the match hasn't be "started" yet, then they are cheatin!
+        if s.set_status != SET_STATUS[1][0]: #In progress..
+            raise ValueError('win_match cannot promote team %s in tournament'
+                             ' %s set number %d because the set is over or is' 
+                             ' not ready to be started yet' % (team.name,
+                             self.name, s.set_number))
 
-        #see if they won the set.
-        if s.matches.count() > (self.best_of / 2):
+        #make a new match for them to win
+        m = s.matches.create(winner=team)
+
+        #see if they won the set by couting their wins
+        if s.matches.filter(winner=team).count() > (self.best_of / 2):
             self.win_set(team)
         
 
@@ -213,6 +225,9 @@ class Tournament(models.Model):
         """
         When a team wins a set, this method will promote them to next bracket
         or win them the tournament if there are no more sets to be had.
+
+        This method will NOT check how many matches are won, etc. win_set is 
+        most likely not the call you want to use; look at win_match instead.
 
         Notes:
         Doesn't do much fail safe checking.  Can promote more teams to a set
@@ -224,7 +239,8 @@ class Tournament(models.Model):
 
         #if they aren't in this set... then maybe its an attacker?
         if s == None:
-            return None
+            raise ValueError('Team \'%s\' is not in Tournament \'%s\'' %
+                            (self.name))
 
         #they are in this tournament. lets promote them.
         #current sets status should be set to completed.
@@ -252,6 +268,49 @@ class Tournament(models.Model):
             ns.set_status = SET_STATUS[1][0]
             ns.save()
 
+    def demote_match(self, team):
+        """
+        If a match was accidently promoted when it should not have been, then
+        we can demote it and restore the previous state.
+
+        This function will delete from Match; this is intended currrently as
+        it would be rare to use this feature unless it was a mistake.
+        """
+        s = self.find_teams_current_set(team)
+
+        #if the set is completed, then this must be a losing team.
+        if s.set_status == SET_STATUS[2][0]:
+            raise ValueError('Cannot demote team \'%s\' in tournament \'%s\' '
+                             ' \'%s\'' % (team.name, self.name))
+
+        #out of all the matches in this tournament in which this team won.
+        # ".order_by('-id')[0]" -- find the most recent.
+        #note: maybe sorting by it won't gaurentee age of match? Maybe add
+        #a date time field???
+        try:
+            m = Match.objects.filter(in_set__in_tournament=self, winner=team).\
+                                     order_by('-id')[0]
+        except:
+            raise ValueError('Cannot demote team \'%s\' in tournament \'%s\'.'
+                             ' No matches to remove.' % (team.name, self.name))
+        #remove the offending match
+        m.delete()
+
+        #for the occasion when they were promoted to a new set but haven't
+        #played a match in that set yet...
+        if s != m.in_set:
+            #this must have been a match that promoted them, so we need to
+            #restore the state perviously to the promotion
+            s.competing_teams.remove(team)
+            s.set_status = SET_STATUS[0][0] #Not started yet...
+            s.save()
+
+            #now that they are out of the wrong bracket. find their previous
+            #location in the tournament
+            ps = self.find_teams_current_set(team)
+            ps.set_status = SET_STATUS[1][0] #In progress...
+            ps.save()
+
     def find_teams_current_set(self, team):
         """
         This method is a helper that will find out which set the team is curr-
@@ -266,29 +325,37 @@ class Tournament(models.Model):
             if team in s.competing_teams.all():
                 return s
         
-        return None
+        raise ValueError('Could not find team \'%s\' in tournament \'%s\'' % 
+                        (team.name, self.name))
 
     def start_tournament(self):
-        """ Starts a tournament. """
-        """ Sets the status appropriately, and creates all the sets for the tournament as """
-        """ well as the elimination rounds if necessary """
+        """
+        Starts a tournament.
+        Sets the status appropriately, and creates all the sets for the
+        tournament.
+        """
+
+        #if the tournament is in progress, raise exception
+        if self.status != TOURNAMENT_STATUS[0][0]:
+            raise ValueError('Tournament %s was tried to be started after it '
+                             'was already in progress...' % (self.name))
 
         #we only can start a tournament if we have a base 2 amount of players
-        #later we will add elimination rounds to help deal with realistic conditions
+        #later we will add elimination rounds to deal with realistic conditions
         if mod(log(self.competing_teams.count(), 2), 1) != 0:
-            raise ValueError('There wasn\'t enough teams in tournament %s to start.  '
-                             'Only %d teams.' % (self.name, set_counter))
+            raise ValueError('There wasn\'t an appopriate number of teams in '
+                             'tournament %s to start. (%d teams.) Needs to be'
+                             ' a power of 2...' % (self.name, set_counter))
 
         set_counter = self.competing_teams.count() - 1
         self.status = TOURNAMENT_STATUS[2][0]
+        self.save()
         
         while set_counter > 0:
-            #assume that there are a log2 based amount of teams... no elmination rounds yet.
-            s = Set()
-            s.in_tournament = self
-            s.set_number = set_counter
+            #assume that there are a log2 based amount of teams... 
+            #no elmination rounds yet.
+            self.all_sets_in_tournament.create(set_number=set_counter)
             set_counter -= 1
-            s.save()
 
         set_counter = self.competing_teams.count() - 1 
         for t in self.competing_teams.all():
@@ -344,7 +411,10 @@ class Match(models.Model):
     in_set = models.ForeignKey(Set, related_name='matches', 
                                help_text='The set this was from')
     winner = models.ForeignKey(Team, null=True, blank=True,
+                               related_name='+',
                                help_text='The team that one this match')
 
     class Meta:
         db_table = 'matches_in_set'
+        ordering = ['id']
+

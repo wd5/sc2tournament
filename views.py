@@ -4,7 +4,7 @@ from django.shortcuts import render_to_response
 from sc2tournament.models import Player, Tournament, Team
 from django.utils import simplejson
 from django.db.models import Q
-from django.contrib.auth.decorators import login_required, permission_required, user_passes_test
+from django.contrib.auth.decorators import login_required, permission_required
 import logging
 
 logger = logging.getLogger(__name__)

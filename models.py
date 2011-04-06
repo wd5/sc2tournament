@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from math import log
 from operator import mod
+from sc2tournament.managers import SetManager, MembershipManager
 
 REGIONS = [
     (u'us', u'United States'),
@@ -17,7 +18,7 @@ REGIONS = [
 MEMBERSHIP_STATUS = [
     (u'pen', u'Pending Approval'),
     (u'app', u'Approved'),
-    (u'ban', u'Banned From Team')
+    (u'dec', u'Declined')
 ]
 
 TOURNAMENT_STATUS = [
@@ -45,6 +46,18 @@ BEST_OF_CHOICES = [
     (7, u'Best of 7'),
 ]
 
+TEAM_STATUS = [
+    (u'org', u'Being organized'),
+    (u'act', u'Active'),
+    (u'dis', u'Disbanded'),
+]
+
+TEAM_SIZES = [
+    (1, u'1v1'),
+    (2, u'2v2'),
+    (3, u'3v3'),
+    (4, u'4v4'),
+]
 
 class Player(models.Model):
     """ Only name and character_code is required. battlenet_id will be pop- """
@@ -108,13 +121,25 @@ class Player(models.Model):
         return u'%s <%d> %s' % (self.name, self.character_code, self.region)
 
 class Team(models.Model):
-    """ A team is a collection of Players; organized by a specific player, """
-    """ that can participate in tournaments. """
+    """
+    A team is a collection of Players; organized by a specific player that can
+    participate in tournaments when they are filled/completed.
+
+    Once a team is created/filled it should impossible to break the team up
+    to avoid confusion of who played which games.  Multiple teams, plus making
+    teams "inactive" status would make more sense.
+    """
     leader = models.ForeignKey(Player, help_text='The player that organized'
                                'this team', related_name='+')
-    name = models.CharField(max_length = 80, blank=True)
+    name = models.CharField(max_length=80, blank=True)
     members = models.ManyToManyField(Player, through='Membership')
     date_formed = models.DateField(auto_now_add=True)
+    status = models.CharField(max_length=3, choices=TEAM_STATUS,
+                              default=TEAM_STATUS[0][0],
+                              help_text='Fast status to readiness of team.')
+    size = models.IntegerField(default=1, choices=TEAM_SIZES,
+                               help_text='The number of players requried to '
+                               'complete this team.')
 
     class Meta:
         unique_together = (
@@ -123,34 +148,97 @@ class Team(models.Model):
         db_table = 'teams'
 
     @staticmethod
-    def createTeam(name, leader):
+    def createTeam(name, leader, size):
         """ Static method shorthand for creating a team """
-        return Team(name=name, leader=leader)
+
+        if size < 1 or size > 4:
+            raise ValueError('Can only create teams with 1-4 size (players)')
+
+        #create saves it with these values
+        t = Team.objects.create(name=name, leader=leader, size=size)
+
+        #the team leader should be a member of the team...
+        t.add_player(leader)
+        t.accept_player(leader)
+        t.save()
+        return t
 
     def as_dictionary(self):
         return {
             u'leader' : self.leader.as_dictionary(),
             u'name'   : self.name,
+            u'status' : self.status,
+            u'size'   : self.size,
             u'members': [x.as_dictionary() for x in self.members.all()],
         }
 
     def __unicode__(self):
-        if not self.name:
-            return u'no name'
-        return u'%s' % (self.name)
+        if self.name:
+            return u'%s#%d-%s' % (self.leader.name, self.leader.character_code,
+                                self.name)
+        return u'%s-GenericTeam' % (self.leader)
 
+    def add_player(self, player):
+        """
+        Tries to add a player to the team. This is not the same as when the
+        member gets approved from the team leader.
+        """
+        #if the team not active or disbanded...
+        if self.status != u'org':
+            raise ValueError('Cannot add \'%s\' to already active/inactive '
+                             'team \'%s\'' % (player, self))
+
+        #make sure they aren't already on the team in anyway...
+        if player in self.members.all():
+            raise ValueError('Cannot add \'%s\' twice to team \'%s\'' %
+                            (player, self))
+        #we can add them
+        m = Membership.objects.create(team=self, player=player)
+        return m
+
+    def accept_player(self, player):
+        """
+        Will accept a pending player on a team to be accepted status.  When
+        these events occur the team may changes its own status to active.
+        """
+        #check to see if the team is still in organizing status
+        if self.status != u'org':
+            raise ValueError('Cannot add player \'%s\' to team \'%s\' the team'
+                             ' is active or disbanded. ' % (player, self))
+
+        #While we debug, this might help catch mistakes in logic
+        if Membership.objects.approved(self).count() >= self.size:
+            raise ValueError('Somehow team \'%s\' has organizing status and is'
+                             ' overly full' % (self))
+
+        #change their status to 'approved' aka 'app'
+        m = Membership.objects.pending(self).get(player=player)
+        m.status = MEMBERSHIP_STATUS[1][0]
+        m.save()
+
+        #see if they completed the team.
+        if Membership.objects.approved(self).count() >= self.size:
+            self.status = TEAM_STATUS[1][0]
+            self.save()
 
 class Membership(models.Model):
-    """ Manages the teams - relation between players and teams """
+    """
+    Manages the teams - relation between players and teams
+    """
     team = models.ForeignKey(Team)
     player = models.ForeignKey(Player)
 
     date_player_joined = models.DateField(auto_now_add=True)
     status = models.CharField(max_length=3, choices=MEMBERSHIP_STATUS, 
-                              default=MEMBERSHIP_STATUS[0][0]) #default status is def
+                              default=MEMBERSHIP_STATUS[0][0])
+    
+    objects = MembershipManager()
 
     class Meta:
         db_table = 'team_members'
+        unique_together = (
+            ('team', 'player'),
+        )
 
     @staticmethod
     def createMembership(player, team):
@@ -167,6 +255,8 @@ class Tournament(models.Model):
     """
     name = models.CharField(max_length=80, blank=False,
                             help_text='The visible name of the tournament')
+    organized_by = models.ForeignKey(Player, related_name='tournaments_created',
+                                     help_text='Creator of this tournament.')
     competing_teams = models.ManyToManyField(Team)
     time_created = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=4, choices=TOURNAMENT_STATUS,
@@ -177,6 +267,8 @@ class Tournament(models.Model):
     winner = models.ForeignKey(Team, blank=True, null=True,
                                related_name='+',
                                help_text='The team that one the match!')
+    size = models.IntegerField(default=1, choices=TEAM_SIZES,
+                               help_text='The required team size to join')
 
     class Meta:
         db_table = 'tournaments'
@@ -184,6 +276,7 @@ class Tournament(models.Model):
     def as_dictionary(self):
         return {
             u'name' : self.name,
+            u'organized_by' : self.organized_by.name,
             u'competing_teams' : [x.as_dictionary() for x in self.competing_teams.all()],
             u'status' : self.status,
             u'best_of' : self.best_of,
@@ -397,6 +490,8 @@ class Set(models.Model):
     competing_teams = models.ManyToManyField(Team,
                                              related_name='all_set_history', 
                                              help_text='All the teams in this match.. should be 2...')
+    #
+    objects = SetManager()
 
     class Meta:
         db_table = 'sets_in_tournaments'

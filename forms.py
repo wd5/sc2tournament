@@ -21,4 +21,5 @@ class TournamentForm(forms.ModelForm):
 
     class Meta:
         model = Tournament
-        fields = ('name', 'best_of', 'status')
+        fields = ('name', 'best_of', 'status', 'region')
+

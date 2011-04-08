@@ -134,6 +134,9 @@ class Team(models.Model):
     name = models.CharField(max_length=80, blank=True)
     members = models.ManyToManyField(Player, through='Membership')
     date_formed = models.DateField(auto_now_add=True)
+    region = models.CharField("Geographic Location", max_length=4,
+                                   choices=REGIONS, default=u'us',
+                                   help_text='The region of this team')
     status = models.CharField(max_length=3, choices=TEAM_STATUS,
                               default=TEAM_STATUS[0][0],
                               help_text='Fast status to readiness of team.')
@@ -154,8 +157,9 @@ class Team(models.Model):
         if size < 1 or size > 4:
             raise ValueError('Can only create teams with 1-4 size (players)')
 
-        #create saves it with these values
-        t = Team.objects.create(name=name, leader=leader, size=size)
+        #create saves it with these values mimic region of leader
+        t = Team.objects.create(name=name, leader=leader, size=size,
+                                region=leader.region)
 
         #the team leader should be a member of the team...
         t.add_player(leader)
@@ -175,8 +179,9 @@ class Team(models.Model):
     def __unicode__(self):
         if self.name:
             return u'%s#%d-%s' % (self.leader.name, self.leader.character_code,
-                                self.name)
-        return u'%s-GenericTeam' % (self.leader)
+                                  self.name)
+        #if they didn't specific a name, use the pk of the team
+        return u'%s-%d' % (self.leader, self.id)
 
     def add_player(self, player):
         """
@@ -192,9 +197,14 @@ class Team(models.Model):
         if player in self.members.all():
             raise ValueError('Cannot add \'%s\' twice to team \'%s\'' %
                             (player, self))
+
+        if player.region != self.region:
+            raise ValueError('Cannot add \'%s\' to team \'%s\' because of the '
+                             'region differences.' % (player, self.name))
+
+
         #we can add them
-        m = Membership.objects.create(team=self, player=player)
-        return m
+        Membership.objects.create(team=self, player=player)
 
     def accept_player(self, player):
         """
@@ -212,6 +222,7 @@ class Team(models.Model):
                              ' overly full' % (self))
 
         #change their status to 'approved' aka 'app'
+        # --get memberships that are pending for this team
         m = Membership.objects.pending(self).get(player=player)
         m.status = MEMBERSHIP_STATUS[1][0]
         m.save()
@@ -243,7 +254,7 @@ class Membership(models.Model):
     @staticmethod
     def createMembership(player, team):
         """ Simple method shorthand for creating team """
-        return Membership(team=team, player=player)
+        return Member.objects.create(team=team, player=player)
 
     def __unicode__(self):
         return u'%s (%s)' % (self.player, self.team)
@@ -257,7 +268,12 @@ class Tournament(models.Model):
                             help_text='The visible name of the tournament')
     organized_by = models.ForeignKey(Player, related_name='tournaments_created',
                                      help_text='Creator of this tournament.')
-    competing_teams = models.ManyToManyField(Team)
+    competing_teams = models.ManyToManyField(Team,
+                                             related_name='approved_tournaments',
+                                             help_text='All teams comepting')
+    pending_teams = models.ManyToManyField(Team,
+                                           related_name='pending_tournaments',
+                                           help_text='Waiting approval')
     time_created = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=4, choices=TOURNAMENT_STATUS,
                               default=TOURNAMENT_STATUS[0][0],
@@ -269,6 +285,8 @@ class Tournament(models.Model):
                                help_text='The team that one the match!')
     size = models.IntegerField(default=1, choices=TEAM_SIZES,
                                help_text='The required team size to join')
+    region = models.CharField(max_length=4, default=REGIONS[0][0], choices=REGIONS,
+                              help_text='The region of accepted players')
 
     class Meta:
         db_table = 'tournaments'
@@ -287,7 +305,7 @@ class Tournament(models.Model):
             return u'Unnamed Tournament (%s)' % (self.competing_teams.all())
         return u'%s (%s)' % (self.name, self.competing_teams.all())
 
-
+    
     def win_match(self, team):
         """
         When a team wins a match in a set, this method will record the victory
@@ -312,7 +330,58 @@ class Tournament(models.Model):
         if s.matches.filter(winner=team).count() > (self.best_of / 2):
             self.win_set(team)
         
+    def add_team_pending(self, team):
+        """
+        Add a team to the tournament in the pending queue.  They will wait here
+        until the tournament organizer approves their status.
+        """
+        #make sure this team is compatiable with the tournament
+        if self.size != team.size:
+            raise ValueError('Team \'%s\' doesn\'t have compatiable number of '
+                             'players with tournament \'%s\'' %
+                             (team.name, self.name))
 
+        #any inactive/disbanded or organizing teams are not eligible
+        if team.status != u'act':
+            raise ValueError('Team \'%s\' is not \'active\' and therefore can '
+                             'not register for tournaments.' % (team.name))
+
+        #don't add them if they are already in tournament already
+        if team in self.competing_teams.all() or \
+           team in self.pending_teams.all():
+           raise ValueError('Team \'%s\' is already in tournament \'%s\'' %
+               (team, self.name))
+
+        #make sure tournament is still being organized.
+        if self.status != u'org':
+            raise ValueError('Tournament \'%s\' is not being organized so '
+                             'team \'%s\' cannot join it' %
+                             (self.name, team.name))
+
+        #if no exceptions were raised, then it must be OK
+        self.pending_teams.add(team)
+
+    def accept_team(self, team):
+        """
+        Take a team from the pending list and put them in competing_teams
+        list.  Less testing is needed because we assume they were first added
+        with the add_team function.
+        """
+        #make sure they were first added
+        if team not in self.pending_teams.all():
+            raise ValueError('Team \'%s\' not in pending_teams therefore they'
+                             ' cannot be accepted into Tournament \'%s\'' %
+                             (team.name, self.name))
+
+        #if the tournament is not still being organized, they cannot join
+        if self.status != u'org':
+            raise ValueError('Tournament \'%s\' is not being organized so '
+                             'team \'%s\' cannot join it' %
+                             (self.name, team.name))
+        
+        #add them to competing_teams and then remove them from pending teams
+        self.competing_teams.add(team)
+        self.pending_teams.remove(team)
 
     def win_set(self, team):
         """
@@ -334,6 +403,11 @@ class Tournament(models.Model):
         if s == None:
             raise ValueError('Team \'%s\' is not in Tournament \'%s\'' %
                             (self.name))
+
+        #see if they did not win enough matches in this set; raise exception
+        if s.matches.filter(winner=team).count() <= self.best_of:
+            raise ValueError('Team \'%s\' has not yet won enough matches to '
+                             'be promoted to the next set.' % (team))
 
         #they are in this tournament. lets promote them.
         #current sets status should be set to completed.
@@ -439,6 +513,17 @@ class Tournament(models.Model):
             raise ValueError('There wasn\'t an appopriate number of teams in '
                              'tournament %s to start. (%d teams.) Needs to be'
                              ' a power of 2...' % (self.name, set_counter))
+
+        #if there are any teams in here that are not active and not part of the
+        #same geographic region... throw exception
+        for team in self.competing_teams.all():
+            if team.status != TEAM_STATUS[1][0]:
+                raise ValueError('Cannot start Tournament \'%s\', Team \'%s\''
+                                 ' is not an active team.' % (self.name, team))
+            if team.region != self.region:
+                raise ValueError('Cannot start Tournament \'%s\', Team \'%s\''
+                                 ' is not in same region.' % (self.name, team))
+                                 
 
         set_counter = self.competing_teams.count() - 1
         self.status = TOURNAMENT_STATUS[2][0]

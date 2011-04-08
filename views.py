@@ -2,6 +2,7 @@ from django.http import HttpResponse
 from django.template import Template, Context, RequestContext
 from django.shortcuts import render_to_response
 from sc2tournament.models import Player, Tournament, Team
+from sc2tournament.forms import TournamentForm
 from django.utils import simplejson
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required, permission_required
@@ -85,14 +86,30 @@ def tournament_search(request):
         results = []
     return tournament_list(request, results)
 
+
+@login_required
+def tournament_create(request):
+    """
+    This function is called when we want to create a tournament via form
+    """
+    if request.method == "POST":
+        tournament_form = TournamentForm(request.POST)
+    else:
+        tournament_form = TournamentForm()
+
+    return render_to_response('create_tournament.html', locals(),
+                              context_instance=RequestContext(request))
+
+
 @login_required
 def test_search_page(request):
-    #SweetWheat is always the first player in our test code
-    sw = Player.objects.all()[0]
+    sw = Player.objects.get(name='SweetWheat', character_code=601)
+
     values = {
         'title' : u'Sample Page',
         'badge_test' : sw,
     }
+
     return render_to_response('test.html', values,
                               context_instance=RequestContext(request))
 

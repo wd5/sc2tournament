@@ -2,7 +2,7 @@ from django.http import HttpResponse
 from django.template import Template, Context, RequestContext
 from django.shortcuts import render_to_response
 from sc2tournament.models import Player, Tournament, Team
-from sc2tournament.forms import TournamentForm
+from sc2tournament.forms import TournamentForm, TeamForm
 from django.utils import simplejson
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required, permission_required
@@ -94,11 +94,35 @@ def tournament_create(request):
     """
     if request.method == "POST":
         tournament_form = TournamentForm(request.POST)
+
+        if tournament_form.is_valid():
+            p = request.user.get_profile()
+            t = tournament_form.save(commit=False)
+            t.organized_by = p
+            t.save()
+
     else:
         tournament_form = TournamentForm()
 
     return render_to_response('create_tournament.html', locals(),
                               context_instance=RequestContext(request))
+
+@login_required
+def team_create(request):
+    """
+    """
+    if request.method == "POST":
+        team_form = TeamForm(request.POST)
+        if team_form.is_valid():
+            p = request.user.get_profile()
+            t = team_form.save(commit=False)
+            t = Team.createTeam(t.name, p, t.size)
+    else:
+        team_form = TeamForm()
+
+    return render_to_response('create_team.html', locals(),
+                              context_instance=RequestContext(request))
+            
 
 
 @login_required
@@ -113,3 +137,10 @@ def test_search_page(request):
     return render_to_response('test.html', values,
                               context_instance=RequestContext(request))
 
+@login_required
+def test_tournament_page(request):
+    values = {
+        'test' : None,
+    }
+    return render_to_response('test_tree.html', values,
+                              context_instance=RequestContext(request))

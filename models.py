@@ -152,14 +152,16 @@ class Team(models.Model):
 
     @staticmethod
     def createTeam(name, leader, size):
-        """ Static method shorthand for creating a team """
-
+        """
+        Static method shorthand for creating a team
+        """
         if size < 1 or size > 4:
             raise ValueError('Can only create teams with 1-4 size (players)')
 
         #create saves it with these values mimic region of leader
         t = Team.objects.create(name=name, leader=leader, size=size,
                                 region=leader.region)
+
 
         #the team leader should be a member of the team...
         t.add_player(leader)

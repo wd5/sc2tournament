@@ -1,0 +1,156 @@
+<html lang="en">
+<head>
+	<link href='http://fonts.googleapis.com/css?family=Droid+Serif&subset=latin' rel='stylesheet' type='text/css'>
+	<link href='http://fonts.googleapis.com/css?family=Droid+Sans&subset=latin' rel='stylesheet' type='text/css'>	
+	<link href='http://fonts.googleapis.com/css?family=PT+Sans+Caption' rel='stylesheet' type='text/css'>
+	<link href='http://fonts.googleapis.com/css?family=Allerta&subset=latin' rel='stylesheet' type='text/css'>
+       <style type="text/css">
+		
+		div {
+			font-family: 'Droid Sans', arial;
+			font-size: 110%;
+		}
+		
+		body {
+			background-color: #eee;
+		}
+		.content {
+			background-color: #fff;
+			border: thin black solid; 
+			padding: 15px; 
+			margin-left:auto;
+			margin-right:auto; 
+			margin-top:200px;
+			margin-bottom:auto;
+			width:600px; 
+		}
+		
+		.content-navi {
+			margin-top:35px;
+			line-height:20px;
+			text-align: center;
+			padding-top:0px;
+		}
+		.content-navi a {
+			font-size:14px;
+			padding-left: 50px;
+			padding-right: 50px;
+			text-decoration:none;
+			color: #333;
+		}
+		
+		.content-navi a:hover {
+			background:#ccc;
+		}
+		
+		.h1 {
+			padding-bottom:0px;
+			font-family: 'Droid Serif', serif;
+			font-weight:normal;
+			text-align:center;
+			font-size:40px;
+		}
+
+		input {
+			font-family: "Droid Sans", arial; 
+			font-size: 12px;
+			color: #333;
+			width: 200px;
+			-webkit-border-radius: 2em;
+			-moz-border-radius: 2em;
+			border-radius: 2em;
+			text-align: center;
+		}
+		
+		label {
+			display: block;
+			width: 190px;
+			float:left;
+			padding-right:10px;
+			text-align: right;
+		}
+		
+		.login  {
+			margin-left:auto;
+			margin-right:auto;
+			margin-top: 50px;
+			width:500px;
+		}
+		
+		.input-black {
+			border: 1px solid black;
+		}
+		
+		.input-red {
+			border: 1px solid red;
+		}
+		
+		.input-green {
+			border: 1px solid green;
+		}
+		
+		.button {
+			width: 80px;
+			margin-left:200px;
+		}
+		
+		.footer {
+
+			font-size: 12px;
+			text-align:center;
+		}
+		
+		.iuga a {
+			font-size:24px;
+			font-weight: Bold;
+			text-decoration: none;
+			color:black;
+		}
+	</style>
+	<script type="text/javascript">
+		// Just some fun stuff for making the form validate email
+		// by turning the outline green upon valid email
+		function alterForm(input) {
+			if (input.getAttribute("class") == "input-black") 
+				input.setAttribute("class", "input-red");
+			if (input.name == "password") {
+				document.getElementsByName("user")[0].setAttribute("class","input-green");
+				input.setAttribute("class","input-red");
+			}
+		}
+	</script>
+</head>
+<body>
+
+    <div class="wrapper">
+		<div class="content" id="content">
+			<div class="content-navi" name="naviwrapper">
+				<span class="h1">Starcraft 2 Tournament</span>
+				<br />
+				<a href="login">login</a> 
+				<a href="register">register</a> 
+				<a href="tournament">tournament</a>
+
+			</div>
+			<div class="login">
+				<form method="post" action="{% url sc2tournament.views.tournament_create %}">
+					{% csrf_token %}
+
+					{{ tournament_form.as_p }}
+					
+					<input type="hidden" name="next" value="{{ next }}" />
+					<input type="submit" value="Create" class="button" />
+				</form>
+				<br />
+			</div>
+		</div> 
+		<br />
+		<div id="footer" class="footer">
+		<span class="iuga"><a href="http://iuga.info"><span style="color:purple">i</span>uga</a></span> <br />
+
+			powered by <a href="https://github.com/h4rr/sc2tourney">sc2tourney</a>- rank information from <a href="http://sc2ranks.org">sc2ranks.org</a> <br />
+		</div>
+	</div>
+</body>
+</html>
+

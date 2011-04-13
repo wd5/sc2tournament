@@ -10,5 +10,6 @@ urlpatterns = patterns('sc2tournament.views',
     (r'^tournament/search/$', 'tournament_search'),
     #---Page Related Functions---#
     (r'tournament/create/$','tournament_create'),
+    (r'^team/create/$', 'team_create'),
     #---Site Management Related---#
 )

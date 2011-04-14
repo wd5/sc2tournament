@@ -144,7 +144,7 @@ Graph.Renderer.Raphael = function(element, graph, width, height) {
     this.height = height || 400;
     var selfRef = this;
     this.r = Raphael(element, this.width, this.height);
-    this.radius = 40; /* max dimension of a node */
+    this.radius = 200; /* max dimension of a node */
     this.graph = graph;
     this.mouse_in = false;
 
@@ -596,11 +596,14 @@ Graph.Layout.TournamentTree.prototype = {
             if(y < miny) miny = y;
         }
 
-        this.graph.layoutMinX = minx;
-        this.graph.layoutMaxX = maxx;
+		//temporary solution, increase min's max's so we don't get overlaps... 
+		//not sure how to fix the rendering code yet
+        this.graph.layoutMinX = minx - 1;
+        this.graph.layoutMaxX = maxx + 1;
 
-        this.graph.layoutMinY = miny;
-        this.graph.layoutMaxY = maxy;
+        this.graph.layoutMinY = miny - 1;
+        this.graph.layoutMaxY = maxy + 1;
+        console.info("bounds: minx: " + minx + " miny: " + miny + " maxx: " + maxx + " maxy: " + maxy);
     }
 };
 

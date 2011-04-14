@@ -1,6 +1,6 @@
-from django.http import HttpResponse
+from django.http import HttpResponse, Http404
 from django.template import Template, Context, RequestContext
-from django.shortcuts import render_to_response
+from django.shortcuts import render_to_response, get_object_or_404
 from sc2tournament.models import Player, Tournament, Team
 from sc2tournament.forms import TournamentForm, TeamForm
 from django.utils import simplejson
@@ -18,6 +18,16 @@ class JsonResponse(HttpResponse):
         content = simplejson.dumps(data, indent=2, ensure_ascii=False)
         super(JsonResponse, self).\
              __init__(content, mimetype='application/json; charset=utf8')
+
+
+@login_required
+def tournament_info(request, id):
+    """
+    Get the json for any tournament based on its id
+    """
+    t = get_object_or_404(Tournament, id=int(id))
+    tournament = t.as_dictionary()
+    return JsonResponse(tournament)
 
 @login_required
 def player_list(request, list_of_players=Player.objects.all()):
@@ -138,9 +148,13 @@ def test_search_page(request):
                               context_instance=RequestContext(request))
 
 @login_required
-def test_tournament_page(request):
+def test_tournament_page(request, tournament_id):
     values = {
-        'test' : None,
+        'tournament_id' : tournament_id,
     }
+    t = get_object_or_404(Tournament, tournament_id)
+    if t.status == u'org':
+        raise Http404
+
     return render_to_response('test_tree.html', values,
                               context_instance=RequestContext(request))

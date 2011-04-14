@@ -10,9 +10,21 @@
       body {
       overflow: hidden;
       }
+      div#canvas {
+      	border: 1px solid black;
+      }
     </style>
+    <script type="text/javascript">
+    /* Get variables from template and use this to render tournament */
+    $(document).ready(function() {
+		renderTournament({{ tournament_id }});
+		//setInterval(function (){ renderTournament({{ tournament_id }}); }, 0000);
+	});
+    </script>
 </head>
 <body>
+<h1>Tournament #{{ tournament_id }}</h1>
 <div id="canvas"></div>
+<div id="test_badge"></div>
 </body>
 </html>

@@ -106,7 +106,8 @@ class Player(models.Model):
 
     def as_dictionary(self):
         return {
-            u'name'              : self.name, 
+            u'name'              : self.name,
+            u'db_id'             : self.id,
             u'character_code'    : self.character_code, 
             u'region'            : self.region,
             u'battlenet_id'      : self.battlenet_id,
@@ -131,7 +132,7 @@ class Team(models.Model):
     """
     leader = models.ForeignKey(Player, help_text='The player that organized'
                                'this team', related_name='+')
-    name = models.CharField(max_length=80, blank=True)
+    name = models.CharField(max_length=80, blank=False, null=False)
     members = models.ManyToManyField(Player, through='Membership')
     date_formed = models.DateField(auto_now_add=True)
     region = models.CharField("Geographic Location", max_length=4,
@@ -172,6 +173,7 @@ class Team(models.Model):
     def as_dictionary(self):
         return {
             u'leader' : self.leader.as_dictionary(),
+            u'db_id'     : self.id,
             u'name'   : self.name,
             u'status' : self.status,
             u'size'   : self.size,
@@ -295,11 +297,13 @@ class Tournament(models.Model):
 
     def as_dictionary(self):
         return {
-            u'name' : self.name,
-            u'organized_by' : self.organized_by.name,
+            u'name'            : self.name,
+            u'organized_by'    : self.organized_by.as_dictionary(),
+            u'status'          : self.status,
+            u'best_of'         : self.best_of,
+            u'size_of_teams'   : self.size,
+            u'sets'            : [x.as_dictionary() for x in self.all_sets_in_tournament.all()],
             u'competing_teams' : [x.as_dictionary() for x in self.competing_teams.all()],
-            u'status' : self.status,
-            u'best_of' : self.best_of,
         }
 
     def __unicode__(self):
@@ -407,7 +411,7 @@ class Tournament(models.Model):
                             (self.name))
 
         #see if they did not win enough matches in this set; raise exception
-        if s.matches.filter(winner=team).count() <= self.best_of:
+        if s.matches.filter(winner=team).count() <= self.best_of / 2:
             raise ValueError('Team \'%s\' has not yet won enough matches to '
                              'be promoted to the next set.' % (team))
 
@@ -577,9 +581,18 @@ class Set(models.Model):
     competing_teams = models.ManyToManyField(Team,
                                              related_name='all_set_history', 
                                              help_text='All the teams in this match.. should be 2...')
-    #
     objects = SetManager()
 
+    def as_dictionary(self):
+        return {
+            'tournament_id'   : self.in_tournament.id,
+            'set_type'        : self.set_type,
+            'set_status'      : self.set_status,
+            'winner'          : self.winner.as_dictionary() if self.winner else None,
+            'set_number'      : self.set_number,
+            'competing_teams' : [x.as_dictionary() for x in self.competing_teams.all()],
+            'matches'         : [x.as_dictionary() for x in self.matches.all()]
+        }
     class Meta:
         db_table = 'sets_in_tournaments'
         #sort by ascending by default.
@@ -595,6 +608,11 @@ class Match(models.Model):
     winner = models.ForeignKey(Team, null=True, blank=True,
                                related_name='+',
                                help_text='The team that one this match')
+
+    def as_dictionary(self):
+        return {
+            'winner' : self.winner.as_dictionary()
+        }
 
     class Meta:
         db_table = 'matches_in_set'

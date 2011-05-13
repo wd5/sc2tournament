@@ -1,4 +1,4 @@
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.template import Template, Context, RequestContext
 from django.shortcuts import render_to_response, get_object_or_404
 from sc2tournament.models import Player, Tournament, Team
@@ -6,6 +6,7 @@ from sc2tournament.forms import TournamentForm, TeamForm
 from django.utils import simplejson
 from django.db.models import Q
 from django.contrib.auth.decorators import login_required, permission_required
+from django.core.urlresolvers import reverse
 import logging
 
 logger = logging.getLogger(__name__)
@@ -21,11 +22,11 @@ class JsonResponse(HttpResponse):
 
 
 @login_required
-def tournament_info(request, id):
+def tournament_info(request, tournament_id):
     """
     Get the json for any tournament based on its id
     """
-    t = get_object_or_404(Tournament, id=int(id))
+    t = get_object_or_404(Tournament, id=int(tournament_id))
     tournament = t.as_dictionary()
     return JsonResponse(tournament)
 
@@ -110,16 +111,154 @@ def tournament_create(request):
             t = tournament_form.save(commit=False)
             t.organized_by = p
             t.save()
-
+            return HttpResponseRedirect(reverse('sc2tournament.views.tournament_status'))
     else:
         tournament_form = TournamentForm()
 
     return render_to_response('create_tournament.html', locals(),
                               context_instance=RequestContext(request))
 
+
+@login_required
+def tournament_join(request):
+    """
+    Join a team into the pending queue of a tournament
+    """
+    #look at Tournament.add_team_pending
+    me = request.user.get_profile()
+
+    return render_to_response('tournament_list.html', locals(),
+                              context_instance=RequestContext(request))
+
+
+
+@login_required
+def tournament_accept(request):
+    """
+    Move a team from the accepted queue to the reject queue in a tournament
+    """
+    #look at Tournament.reject_team
+    me = request.user.get_profile()
+
+    #make sure they are posting a form.
+    if request.method != "POST":
+        return HttpResponseRedirect(reverse('sc2tournament.views.tournament_status'))
+
+    #get information from post...
+    team = Team.objects.get(pk=request.POST['team_id'])
+    tournament = Tournament.objects.get(pk=request.POST['tournament_id'])
+
+    #make sure that the 'me' is the organizer
+    if tournament.organized_by != me:
+        return HttpResponse("You cannot manage this tournament...")
+
+    #if there is problems with the logic catch exception and show errors
+    try:
+        tournament.accept_team(team)
+    except Exception as e:
+        return HttpResponse(e)
+
+    return HttpResponseRedirect(reverse('sc2tournament.views.test_tournament_page',
+                                kwargs={ 'tournament_id' : tournament.id }))
+
+@login_required
+def tournament_reject(request):
+    """
+    Move a team from the accepted queue to the reject queue in a tournament
+    """
+    #look at Tournament.reject_team
+    me = request.user.get_profile()
+
+    #make sure they are posting a form.
+    if request.method != "POST":
+        return HttpResponseRedirect(reverse('sc2tournament.views.tournament_status'))
+
+    #get information from post...
+    team = Team.objects.get(pk=request.POST['team_id'])
+    tournament = Tournament.objects.get(pk=request.POST['tournament_id'])
+
+    #make sure that the 'me' is the organizer
+    if tournament.organized_by != me:
+        return HttpResponse("You cannot manage this tournament...")
+
+    #if the tournament is in progress, remove this option
+    if tournament.status != u'org':
+        return HttpResponse("You cannot remove a team once the tournament has started")
+
+    #if there is problems with the logic catch exception and show errors
+    try:
+        tournament.reject_team(team)
+    except Exception as e:
+        return HttpResponse(e)
+
+    return HttpResponseRedirect(reverse('sc2tournament.views.test_tournament_page',
+                                kwargs={ 'tournament_id' : tournament.id }))
+
+@login_required
+def tournament_start(request):
+    """
+    When an organizer of a tournament wants to start the event
+    """
+    a = u'%s %s' % (request.POST['value'], request.POST['tournament_id'])
+    t = get_object_or_404(Tournament, id=request.POST['tournament_id'])
+    try:
+        t.start_tournament()
+    except Exception as e:
+        return HttpResponse(e)
+
+    return HttpResponseRedirect(reverse('sc2tournament.views.test_tournament_page',
+                                kwargs={ 'tournament_id' : t.id }))
+
+@login_required
+def team_status(request):
+    """
+    Overview page for teams - create, accept, reject, list
+    """
+    #their sc2 player
+    me = request.user.get_profile()
+
+    #teams they can manage
+    my_teams = Team.objects.filter(leader=me)
+
+    #organizing teams they are part of
+    my_pending_teams = Team.objects.filter(members=me, status=u'org')
+
+    #active teams they are apart of
+    my_active_teams = Team.objects.filter(members=me, status=u'act')
+
+    return render_to_response('team_list.html', locals(),
+                              context_instance=RequestContext(request))
+@login_required
+def tournament_status(request):
+    #get the user's sc2 player account
+    me = request.user.get_profile()
+
+    #get the tournaments they made
+    my_tournaments = Tournament.objects.filter(organized_by=me)
+    
+    #only show the tournaments that they have potential to be in
+    my_pending_tournaments = Tournament.objects\
+                             .filter(pending_teams=me.my_teams.all(),
+                                     status=u'org')
+
+    #show the tournaments they are in they aren't over
+    my_current_tournaments = Tournament.objects\
+                             .filter(competing_teams=me.my_teams.all())\
+                             .exclude(status=u'com')
+
+    #show the tournaments they are in that ARE over
+    my_previous_tournaments = Tournament.objects\
+                              .filter(competing_teams=me.my_teams.all(),
+                                      status=u'com')
+
+    #render all this shit on the page! :P
+    return render_to_response('tournament_list.html', locals(),
+                              context_instance=RequestContext(request))
+
 @login_required
 def team_create(request):
     """
+    Creates a team with form
     """
     if request.method == "POST":
         team_form = TeamForm(request.POST)
@@ -127,6 +266,9 @@ def team_create(request):
             p = request.user.get_profile()
             t = team_form.save(commit=False)
             t = Team.createTeam(t.name, p, t.size)
+
+            #redirect them back to tournaments page..
+            return HttpResponseRedirect(reverse('sc2tournament.views.tournament_status'))
     else:
         team_form = TeamForm()
 
@@ -134,6 +276,10 @@ def team_create(request):
                               context_instance=RequestContext(request))
             
 
+@login_required
+def overview(request):
+    return render_to_response('overview.html', locals(),
+                              context_instance=RequestContext(request))
 
 @login_required
 def test_search_page(request):
@@ -152,9 +298,7 @@ def test_tournament_page(request, tournament_id):
     values = {
         'tournament_id' : tournament_id,
     }
-    t = get_object_or_404(Tournament, tournament_id)
-    if t.status == u'org':
-        raise Http404
+    t = get_object_or_404(Tournament, id=tournament_id)
 
-    return render_to_response('test_tree.html', values,
+    return render_to_response('test_tree.html', locals(),
                               context_instance=RequestContext(request))

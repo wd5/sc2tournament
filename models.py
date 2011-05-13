@@ -131,9 +131,10 @@ class Team(models.Model):
     teams "inactive" status would make more sense.
     """
     leader = models.ForeignKey(Player, help_text='The player that organized'
-                               'this team', related_name='+')
+                               'this team', related_name='teams_i_made')
     name = models.CharField(max_length=80, blank=False, null=False)
-    members = models.ManyToManyField(Player, through='Membership')
+    members = models.ManyToManyField(Player, through='Membership',
+                                     related_name='my_teams')
     date_formed = models.DateField(auto_now_add=True)
     region = models.CharField("Geographic Location", max_length=4,
                                    choices=REGIONS, default=u'us',
@@ -388,6 +389,26 @@ class Tournament(models.Model):
         #add them to competing_teams and then remove them from pending teams
         self.competing_teams.add(team)
         self.pending_teams.remove(team)
+
+    def reject_team(self, team):
+        """
+        Take a team from the accepted list and put them back into the pending
+        queue.  We can use this in case we made mistakes.
+        """
+        #if tournament has started, don't do this
+        if self.status != u'org':
+            raise ValueError('Team \'%s\' cannot be removed from tournament '
+                             '\'%s\' because it has already started' % 
+                             (team.name, self.name))
+
+        #make sure they are in pending
+        if team not in self.competing_teams.all():
+            raise ValueError('Team \'%s\' cannot be removed from tournament '
+                             '\'%s\' because they were never accepted to it.' % 
+                             (team.name, self.name))
+
+        self.competing_teams.remove(team)
+        self.pending_teams.add(team)
 
     def win_set(self, team):
         """

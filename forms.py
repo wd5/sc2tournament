@@ -33,6 +33,7 @@ class PlayerForm(forms.ModelForm):
 
 class TeamForm(forms.ModelForm):
     """
+    Simple ModelForm to show which fields should be accessible for teams
     """
     class Meta:
         model = Team

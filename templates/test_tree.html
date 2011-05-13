@@ -23,8 +23,78 @@
     </script>
 </head>
 <body>
-<h1>Tournament #{{ tournament_id }}</h1>
+<h1>Tournament #{{ tournament_id }} - {{ t.name }} # {{ t.status }}</h1>
+
+
+{# Check to see if we should show them the admin stuff #}
+{% ifequal t.organized_by.id request.user.id %}
+
+<div id="admin">	
+	<p>Click on the team name to accept or reject this team into your tournament...</p>
+	<div id="pending_teams">
+		<ul>
+			<lh>Teams Pending</lh>
+		{% for team in t.pending_teams.all %}
+			<li>
+				<form id="form_accept_{{ team.id }}" method="post" action="{% url sc2tournament.views.tournament_accept %}">
+					{% csrf_token %}
+					<input type="hidden" name="team_id" value="{{ team.id }}" />
+					<input type="hidden" name="tournament_id" value="{{ t.id }}" />
+					<a onclick="document.getElementById('form_accept_{{ team.id }}').submit();">{{ team }}</a>
+					<ul>
+						{% for member in team.members.all %}
+							<li>{{ member }}</li>
+						{% endfor %}
+					</ul>
+				</form>
+			</li>
+		{% endfor %}
+		</ul>
+	</div>
+	
+	
+	<div id="accepted_teams">
+		<ul>
+			<lh>Teams accepted</lh>
+		{% for team in t.competing_teams.all %}
+			<li>
+				<form id="form_reject_{{ team.id }}" method="post" action="{% url sc2tournament.views.tournament_reject %}">
+					{% csrf_token %}
+					<input type="hidden" name="team_id" value="{{ team.id }}" />
+					<input type="hidden" name="tournament_id" value="{{ t.id }}" />
+					<a onclick="document.getElementById('form_reject_{{ team.id }}').submit();">{{ team }}</a>
+					<ul>
+						{% for member in team.members.all %}
+							<li>{{ member }}</li>
+						{% endfor %}
+					</ul>
+				</form>
+			</li>
+		{% endfor %}
+		</ul>
+	</div>
+	
+	
+	
+	<form method="post" action="{% url sc2tournament.views.tournament_start %}">.
+		{% csrf_token %}
+		<input type="hidden" name="value" value="yes" />
+		<input type="hidden" name="tournament_id" value="{{ t.id }}" />
+		<input type="submit" value="Start the Tournament!" />
+	</form>	
+</div>
+
+{% endifequal %}
+
+
+
+{# Only show the tournament chart if the tournament hasn't started yet #}
+{% ifnotequal t.status "org" %}
 <div id="canvas"></div>
-<div id="test_badge"></div>
+{% endifnotequal %}
+
+
+
+
 </body>
 </html>

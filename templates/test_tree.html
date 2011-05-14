@@ -1,25 +1,125 @@
 <html>
 <head>
-    <script type="text/javascript" src="{{ STATIC_URL }}js/raphael-min.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}js/dracula_graffle.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}js/jquery-1.4.2.min.js"></script>
+    <!--<script type="text/javascript" src="{{ STATIC_URL }}js/raphael-min.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}js/dracula_graffle.js"></script> -->
+    <script type="text/javascript" src="{{ STATIC_URL }}js/jquery-1.4.2.min.js"></script><!--
     <script type="text/javascript" src="{{ STATIC_URL }}js/dracula_graph.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}js/dracula_algorithms.js"></script>
-    <script type="text/javascript" src="{{ STATIC_URL }}js/binary_tree.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}js/binary_tree.js"></script>-->
     <style type="text/css">
-      body {
-      overflow: hidden;
-      }
       div#canvas {
       	border: 1px solid black;
       }
     </style>
+           <style type="text/css">
+		
+		div {
+			font-family: 'Droid Sans', arial;
+			font-size: 110%;
+		}
+		
+		body {
+			background-color: #eee;
+		}
+		.content {
+			background-color: #fff;
+			border: thin black solid; 
+			padding: 15px; 
+			margin-left:auto;
+			margin-right:auto; 
+			margin-top:200px;
+			margin-bottom:auto;
+			width:600px; 
+		}
+		
+		.content-navi {
+			margin-top:35px;
+			line-height:20px;
+			text-align: center;
+			padding-top:0px;
+		}
+		.content-navi a {
+			font-size:14px;
+			padding-left: 50px;
+			padding-right: 50px;
+			text-decoration:none;
+			color: #333;
+		}
+		
+		.content-navi a:hover {
+			background:#ccc;
+		}
+		
+		.h1 {
+			padding-bottom:0px;
+			font-family: 'Droid Serif', serif;
+			font-weight:normal;
+			text-align:center;
+			font-size:40px;
+		}
+
+		input {
+			font-family: "Droid Sans", arial; 
+			font-size: 12px;
+			color: #333;
+			width: 200px;
+			-webkit-border-radius: 2em;
+			-moz-border-radius: 2em;
+			border-radius: 2em;
+			text-align: center;
+		}
+		
+		label {
+			display: block;
+			width: 190px;
+			float:left;
+			padding-right:10px;
+			text-align: right;
+		}
+		
+		.login  {
+			margin-left:auto;
+			margin-right:auto;
+			margin-top: 50px;
+			width:500px;
+		}
+		
+		.input-black {
+			border: 1px solid black;
+		}
+		
+		.input-red {
+			border: 1px solid red;
+		}
+		
+		.input-green {
+			border: 1px solid green;
+		}
+		
+		.button {
+			width: 80px;
+			margin-left:200px;
+		}
+		
+		.footer {
+
+			font-size: 12px;
+			text-align:center;
+		}
+		
+		.iuga a {
+			font-size:24px;
+			font-weight: Bold;
+			text-decoration: none;
+			color:black;
+		}
+	</style>
     <script type="text/javascript">
     /* Get variables from template and use this to render tournament */
-    $(document).ready(function() {
+  /*  $(document).ready(function() {
 		renderTournament({{ tournament_id }});
 		//setInterval(function (){ renderTournament({{ tournament_id }}); }, 0000);
-	});
+	});*/
     </script>
 </head>
 <body>
@@ -29,6 +129,94 @@
 {# Check to see if we should show them the admin stuff #}
 {% ifequal t.organized_by.id request.user.id %}
 
+<script type="text/javascript">
+  // Some ajaxy stuff for submitting the form
+  $(document).ready(function() {
+        $('.pending').click(function () {
+          // Get the parent - i.e., the form element, this function is called from <a>
+          var link = $(this).parent();
+          // Get the form data to submit
+          var data = link.serialize();
+          // Get the URL that the form submits it to
+          var postUrl = link.attr('action');
+          $.ajax({
+              // AJAX request to the URL the form was going to submit to
+              url: postUrl, 
+              // Post ... 
+              type: "POST",
+              //pass the data         
+              data: data,     
+              //Do not cache the page
+              cache: false,
+              //success
+              success: function (html) {              
+                  // TODO: we can check the result here
+                  if ( 1 == 1 ) {
+                      // Move up to the <li> tag
+                      link = link.parent();
+                      // Fade it out, move it to accepted teams, fade in.              
+                      link.fadeOut(250, function() {                    
+                        link.remove().appendTo("#accepted_teams ul");
+                        link.fadeIn(250);
+                      });
+                  }       
+              }    
+          });
+        });
+        $('.accepted').click(function () {
+          // Get the parent
+          var link = $(this).parent();
+          var data = link.serialize();
+          var postUrl = link.attr('action');
+          $.ajax({
+              url: postUrl, 
+              type: "POST",
+              //pass the data         
+              data: data,     
+              //Do not cache the page
+              cache: false,
+              //success
+              success: function (html) {              
+                  if ( 1 == 1 ) {        
+                      link = link.parent();          
+                      link.fadeOut(250, function() {          
+                        link.remove().appendTo("#pending_teams ul"); 
+                        link.fadeIn(250);       
+                      });
+                  }           
+              }    
+          });
+        });
+
+        $('form').submit(function() {
+          alert($(this).serialize());
+          var data = $(this).serialize(); 
+          //start the ajax
+          $.ajax({
+              //this is the php file that processes the data and send mail
+              url: "process.php", 
+              //GET method is used
+              type: "POST",
+              //pass the data         
+              data: data,     
+              //Do not cache the page
+              cache: false,
+              //success
+              success: function (html) {              
+                  //if process.php returned 1/true (send mail success)
+                  if (html) {                  
+                      //hide the form
+                      $(this).fadeOut('slow');                 
+                       
+                      //show the success message
+                      $(this).fadeIn('slow');
+                 }
+              }    
+          });
+        return false;
+        });
+  });
+</script>
 <div id="admin">	
 	<p>Click on the team name to accept or reject this team into your tournament...</p>
 	<div id="pending_teams">
@@ -40,7 +228,7 @@
 					{% csrf_token %}
 					<input type="hidden" name="team_id" value="{{ team.id }}" />
 					<input type="hidden" name="tournament_id" value="{{ t.id }}" />
-					<a onclick="document.getElementById('form_accept_{{ team.id }}').submit();">{{ team }}</a>
+					<a class="pending">{{ team }}</a>
 					<ul>
 						{% for member in team.members.all %}
 							<li>{{ member }}</li>
@@ -62,7 +250,7 @@
 					{% csrf_token %}
 					<input type="hidden" name="team_id" value="{{ team.id }}" />
 					<input type="hidden" name="tournament_id" value="{{ t.id }}" />
-					<a onclick="document.getElementById('form_reject_{{ team.id }}').submit();">{{ team }}</a>
+					<a class="accepted">{{ team }}</a>
 					<ul>
 						{% for member in team.members.all %}
 							<li>{{ member }}</li>
@@ -95,6 +283,6 @@
 
 
 
-
+<div style="clear:both">Clear div</div>
 </body>
 </html>

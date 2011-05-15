@@ -6,6 +6,8 @@
     <script type="text/javascript" src="{{ STATIC_URL }}js/dracula_graph.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}js/dracula_algorithms.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}js/binary_tree.js"></script>
+    {# Let's host this locally asap #}
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.12/jquery-ui.min.js"></script>
     <style type="text/css">
       div#canvas {
       	border: 1px solid black;
@@ -165,10 +167,10 @@ $(document).ready(function() {
                       // Move up to the <li> tag
                       link = link.parent();
                       // Fade it out, move it to accepted teams, fade in.              
-                      link.fadeOut(250, function() {      
+                      link.fadeOut(100, function() {      
                         link.remove();
 			link.appendTo(appendClass + " ul:first ");
-                        link.fadeIn(250, function() {       
+                        link.fadeIn(100, function() {       
                           $(this).children('form').attr('action', newUrl);
                           // Damn you jQuery, I don't want to set another click listener for the same element
                           /*$(this).find("a").click(function() { 
@@ -190,7 +192,16 @@ $(document).ready(function() {
           });
 	  return -1;
         };
+	// add the listeners
         $('.pending , .accepted').click(function() { $(this).ajaxToggle() });
+	
+	// from jquery ui
+	$( "#pending_list" ).sortable({
+		connectWith: "ul"
+	});
+	$("#accepted_list").sortable({
+		connectWith: "ul"
+	});
 });
 </script>
 <style type="text/css">
@@ -211,13 +222,16 @@ $(document).ready(function() {
 	display:none;
 	color:red;
     }
+    
+    #pending_list, #accepted_list { list-style-type: none; margin: 0; padding: 0; float: left; margin-right: 10px; background: #eee; padding: 5px}
+    #pending_list li, #accepted_list li {}
 </style>
 <div id="admin">	
 	<p>Click on the team name to accept or reject this team into your tournament...</p>
 	<div id="error"> 
 	</div>
 	<div id="pending_teams">
-		<ul>
+		<ul id="pending_list">
 			<lh>Teams Pending</lh>
 		{% for team in t.pending_teams.all %}
 			<li>
@@ -237,7 +251,7 @@ $(document).ready(function() {
 		</ul>
 	</div>
 	<div id="accepted_teams">
-		<ul>
+		<ul id="accepted_list">
 			<lh>Teams accepted</lh>
 		{% for team in t.competing_teams.all %}
 			<li>

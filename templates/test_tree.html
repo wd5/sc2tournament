@@ -129,9 +129,11 @@
 {# Check to see if we should show them the admin stuff #}
 {% ifequal t.organized_by.id request.user.id %}
 <script type="text/javascript">
-  // Some ajaxy stuff for submitting the form
+// Some ajaxy stuff for submitting the form
 $(document).ready(function() {
-        function ajaxToggle(team) {
+
+	$.fn.ajaxToggle = function() {
+	  var team = this;
           console.log("Called with " + team);
           var accept = "{% url sc2tournament.views.tournament_accept %}";
           var reject = "{% url sc2tournament.views.tournament_reject %}";
@@ -158,21 +160,22 @@ $(document).ready(function() {
               cache: false,
               //success
               success: function (html) {              
-                  console.log(html);
                   // TODO: we can check the result here
                   if ( html.indexOf('<html>') != -1 ) {
                       // Move up to the <li> tag
                       link = link.parent();
                       // Fade it out, move it to accepted teams, fade in.              
-                      link.fadeOut(250, function() {                    
-                        link.remove().appendTo(appendClass + " ul");
+                      link.fadeOut(250, function() {      
+                        link.remove();
+			link.appendTo(appendClass + " ul:first ");
                         link.fadeIn(250, function() {       
-                          $(this).find('form').attr('action', newUrl);
-                          console.log("Setting post to " + newUrl);
+                          $(this).children('form').attr('action', newUrl);
                           // Damn you jQuery, I don't want to set another click listener for the same element
-                          $(this).find("a").click(function() { 
-				ajaxToggle(this) 
-			  });
+                          /*$(this).find("a").click(function() { 
+				$(this).delay(800).ajaxToggle();
+			  });*/
+			 $('.pending , .accepted').unbind('click');
+			 $('.pending , .accepted').click(function() { $(this).ajaxToggle() });
                         });
                       });
                   } else { // Deal with an ajax error
@@ -185,9 +188,9 @@ $(document).ready(function() {
 		    
               }
           });
-        }
-        $('.pending').click(function() { ajaxToggle(this) });
-        $('.accepted').click(function() { ajaxToggle(this) });
+	  return -1;
+        };
+        $('.pending , .accepted').click(function() { $(this).ajaxToggle() });
 });
 </script>
 <style type="text/css">
@@ -222,7 +225,7 @@ $(document).ready(function() {
 					{% csrf_token %}
 					<input type="hidden" name="team_id" value="{{ team.id }}" />
 					<input type="hidden" name="tournament_id" value="{{ t.id }}" />
-					<a class="pending team">{{ team }}</a> <span onclick="$(this).find('ul').fadeToggle()">(+)</a>
+					<a class="pending team">{{ team }}</a> <span onclick="$(this).find('ul').toggle()">(+)</a>
 					<ul>
 						{% for member in team.members.all %}
 							<li>{{ member }}</li>

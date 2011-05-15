@@ -6,116 +6,15 @@
     <script type="text/javascript" src="{{ STATIC_URL }}js/dracula_graph.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}js/dracula_algorithms.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}js/binary_tree.js"></script>
+    <script type="text/javascript" src="{{ STATIC_URL }}js/tourney_manage.js"></script>
     {# Let's host this locally asap #}
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.12/jquery-ui.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}css/login.css" />
     <style type="text/css">
       div#canvas {
       	border: 1px solid black;
       }
     </style>
-           <style type="text/css">
-		
-		div {
-			font-family: 'Droid Sans', arial;
-			font-size: 110%;
-		}
-		
-		body {
-			background-color: #eee;
-		}
-		.content {
-			background-color: #fff;
-			border: thin black solid; 
-			padding: 15px; 
-			margin-left:auto;
-			margin-right:auto; 
-			margin-top:200px;
-			margin-bottom:auto;
-			width:600px; 
-		}
-		
-		.content-navi {
-			margin-top:35px;
-			line-height:20px;
-			text-align: center;
-			padding-top:0px;
-		}
-		.content-navi a {
-			font-size:14px;
-			padding-left: 50px;
-			padding-right: 50px;
-			text-decoration:none;
-			color: #333;
-		}
-		
-		.content-navi a:hover {
-			background:#ccc;
-		}
-		
-		.h1 {
-			padding-bottom:0px;
-			font-family: 'Droid Serif', serif;
-			font-weight:normal;
-			text-align:center;
-			font-size:40px;
-		}
-
-		input {
-			font-family: "Droid Sans", arial; 
-			font-size: 12px;
-			color: #333;
-			width: 200px;
-			-webkit-border-radius: 2em;
-			-moz-border-radius: 2em;
-			border-radius: 2em;
-			text-align: center;
-		}
-		
-		label {
-			display: block;
-			width: 190px;
-			float:left;
-			padding-right:10px;
-			text-align: right;
-		}
-		
-		.login  {
-			margin-left:auto;
-			margin-right:auto;
-			margin-top: 50px;
-			width:500px;
-		}
-		
-		.input-black {
-			border: 1px solid black;
-		}
-		
-		.input-red {
-			border: 1px solid red;
-		}
-		
-		.input-green {
-			border: 1px solid green;
-		}
-		
-		.button {
-			width: 80px;
-			margin-left:200px;
-		}
-		
-		.footer {
-
-			font-size: 12px;
-			text-align:center;
-		}
-		
-		.iuga a {
-			font-size:24px;
-			font-weight: Bold;
-			text-decoration: none;
-			color:black;
-		}
-	</style>
     <script type="text/javascript">
     /* Get variables from template and use this to render tournament */
     $(document).ready(function() {
@@ -130,80 +29,6 @@
 
 {# Check to see if we should show them the admin stuff #}
 {% ifequal t.organized_by.id request.user.id %}
-<script type="text/javascript">
-// Some ajaxy stuff for submitting the form
-$(document).ready(function() {
-
-	$.fn.ajaxToggle = function() {
-	  var team = this;
-          console.log("Called with " + team);
-          var accept = "{% url sc2tournament.views.tournament_accept %}";
-          var reject = "{% url sc2tournament.views.tournament_reject %}";
-          // Get the parent - i.e., the form element, this function is called from <a>
-          var link = $(team).parent();
-          // Get the form data to submit
-          var data = link.serialize();
-          // Get the URL that the form submits it to
-          var postUrl = link.attr('action');
-          // Conditional stuff to consolidate accepted/rejected into one function
-          var accepted = postUrl == accept;
-          if(accepted) console.log("Called with an accept url");
-          var newUrl = accepted ? reject : accept;
-          var appendClass = accepted ? "#accepted_teams" : "#pending_teams";
-          console.log("Posting to " + postUrl);
-          $.ajax({
-              // AJAX request to the URL the form was going to submit to
-              url: postUrl, 
-              // Post ... 
-              type: "POST",
-              //pass the data         
-              data: data,     
-              //Do not cache the page
-              cache: false,
-              //success
-              success: function (html) {              
-                  // TODO: we can check the result here
-                  if ( html.indexOf('<html>') != -1 ) {
-                      // Move up to the <li> tag
-                      link = link.parent();
-                      // Fade it out, move it to accepted teams, fade in.              
-                      link.fadeOut(100, function() {      
-                        link.remove();
-			link.appendTo(appendClass + " ul:first ");
-                        link.fadeIn(100, function() {       
-                          $(this).children('form').attr('action', newUrl);
-                          // Damn you jQuery, I don't want to set another click listener for the same element
-                          /*$(this).find("a").click(function() { 
-				$(this).delay(800).ajaxToggle();
-			  });*/
-			 $('.pending , .accepted').unbind('click');
-			 $('.pending , .accepted').click(function() { $(this).ajaxToggle() });
-                        });
-                      });
-                  } else { // Deal with an ajax error
-		    $("#error").text("There was an error! " +html+ " (click to close) ");
-		    $("#error").fadeIn();
-		    $("#error").click(function () {
-			$(this).fadeOut();
-		    });
-		  }
-		    
-              }
-          });
-	  return -1;
-        };
-	// add the listeners
-        $('.pending , .accepted').click(function() { $(this).ajaxToggle() });
-	
-	// from jquery ui
-	$( "#pending_list" ).sortable({
-		connectWith: "ul"
-	});
-	$("#accepted_list").sortable({
-		connectWith: "ul"
-	});
-});
-</script>
 <style type="text/css">
     #pending_teams {
       float:left; 
@@ -222,7 +47,9 @@ $(document).ready(function() {
 	display:none;
 	color:red;
     }
-    
+    .loading {
+	color:gray;
+    }
     #pending_list, #accepted_list { list-style-type: none; margin: 0; padding: 0; float: left; margin-right: 10px; background: #eee; padding: 5px}
     #pending_list li, #accepted_list li {}
 </style>
@@ -259,7 +86,7 @@ $(document).ready(function() {
 					{% csrf_token %}
 					<input type="hidden" name="team_id" value="{{ team.id }}" />
 					<input type="hidden" name="tournament_id" value="{{ t.id }}" />
-					<a class="accepted team">{{ team }}</a> <span onclick="$(this).find('ul').toggle()">(+)</a>
+					<a class="accepted team">{{ team }}</a> <span onclick="$(this).next().is(':visible') ? $(this).next().fadeOut(100) : $(this).next().fadeIn(); $(this).text($(this).text() == '(+)' ? '(-)' : '(+)')">(+)</span>
 					<ul>
 						{% for member in team.members.all %}
 							<li>{{ member }}</li>
@@ -274,7 +101,7 @@ $(document).ready(function() {
 		{% csrf_token %}
 		<input type="hidden" name="value" value="yes" />
 		<input type="hidden" name="tournament_id" value="{{ t.id }}" />
-		<input type="submit" value="Start the Tournament!" />
+		<!--<input type="submit" value="Start the Tournament!" />-->
 	</form>	
 </div>
 {% endifequal %}

@@ -7,7 +7,7 @@
     <script type="text/javascript" src="{{ STATIC_URL }}js/dracula_algorithms.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}js/binary_tree.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}js/tourney_manage.js"></script>
-    {# Let's host this locally asap #}
+    {# Let's host this locally asap #} 
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.12/jquery-ui.min.js"></script>
     <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}css/login.css" />
     <style type="text/css">
@@ -57,7 +57,7 @@
 	<p>Click on the team name to accept or reject this team into your tournament...</p>
 	<div id="error"> 
 	</div>
-	<div id="pending_teams">
+	<div id="pending_teams" data-post-url="{% url sc2tournament.views.tournament_accept %}">
 		<ul id="pending_list">
 			<lh>Teams Pending</lh>
 		{% for team in t.pending_teams.all %}
@@ -77,7 +77,7 @@
 		{% endfor %}
 		</ul>
 	</div>
-	<div id="accepted_teams">
+	<div id="accepted_teams" data-post-url="{% url sc2tournament.views.tournament_reject %}">
 		<ul id="accepted_list">
 			<lh>Teams accepted</lh>
 		{% for team in t.competing_teams.all %}

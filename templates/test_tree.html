@@ -128,7 +128,6 @@
 
 {# Check to see if we should show them the admin stuff #}
 {% ifequal t.organized_by.id request.user.id %}
-
 <script type="text/javascript">
   // Some ajaxy stuff for submitting the form
 $(document).ready(function() {
@@ -161,20 +160,29 @@ $(document).ready(function() {
               success: function (html) {              
                   console.log(html);
                   // TODO: we can check the result here
-                  if ( 1 == 1 ) {
+                  if ( html.indexOf('<html>') != -1 ) {
                       // Move up to the <li> tag
                       link = link.parent();
                       // Fade it out, move it to accepted teams, fade in.              
-                      link.fadeOut(50, function() {                    
+                      link.fadeOut(250, function() {                    
                         link.remove().appendTo(appendClass + " ul");
-                        link.fadeIn(50, function() {       
+                        link.fadeIn(250, function() {       
                           $(this).find('form').attr('action', newUrl);
                           console.log("Setting post to " + newUrl);
                           // Damn you jQuery, I don't want to set another click listener for the same element
-                          $(this).find('a').click(function() { ajaxToggle(this) });
+                          $(this).find("a").click(function() { 
+				ajaxToggle(this) 
+			  });
                         });
                       });
-                  }       
+                  } else { // Deal with an ajax error
+		    $("#error").text("There was an error! " +html+ " (click to close) ");
+		    $("#error").fadeIn();
+		    $("#error").click(function () {
+			$(this).fadeOut();
+		    });
+		  }
+		    
               }
           });
         }
@@ -196,9 +204,15 @@ $(document).ready(function() {
     #admin ul li ul {
       display:none;
     }
+    #error {
+	display:none;
+	color:red;
+    }
 </style>
 <div id="admin">	
 	<p>Click on the team name to accept or reject this team into your tournament...</p>
+	<div id="error"> 
+	</div>
 	<div id="pending_teams">
 		<ul>
 			<lh>Teams Pending</lh>
@@ -219,8 +233,6 @@ $(document).ready(function() {
 		{% endfor %}
 		</ul>
 	</div>
-	
-	
 	<div id="accepted_teams">
 		<ul>
 			<lh>Teams accepted</lh>
@@ -241,9 +253,6 @@ $(document).ready(function() {
 		{% endfor %}
 		</ul>
 	</div>
-	
-	
-	
 	<form method="post" action="{% url sc2tournament.views.tournament_start %}">.
 		{% csrf_token %}
 		<input type="hidden" name="value" value="yes" />
@@ -251,18 +260,12 @@ $(document).ready(function() {
 		<input type="submit" value="Start the Tournament!" />
 	</form>	
 </div>
-
 {% endifequal %}
-
-
 
 {# Only show the tournament chart if the tournament hasn't started yet #}
 {% ifnotequal t.status "org" %}
 <div id="canvas"></div>
 {% endifnotequal %}
-
-
-
 <div style="clear:both"></div>
 </body>
 </html>

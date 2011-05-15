@@ -150,19 +150,16 @@ def tournament_accept(request):
 
     #make sure that the 'me' is the organizer
     if tournament.organized_by != me:
-        return JsonResponse({ u'success' : False, u'error_message' : "You cannot manage this tournament..." })
+        return HttpResponse("You cannot manage this tournament...")
 
     #if there is problems with the logic catch exception and show errors
     try:
         tournament.accept_team(team)
     except Exception as e:
-        return JsonResponse({ u'success' : False, u'error_message' : e})
-    
-    if request.is_ajax():
-      return JsonResponse({ u'success' : True})
-      
+        return HttpResponse(e)
+
     return HttpResponseRedirect(reverse('sc2tournament.views.test_tournament_page',
-                               kwargs={ 'tournament_id' : tournament.id }))
+                                kwargs={ 'tournament_id' : tournament.id }))
 
 @login_required
 def tournament_reject(request):
@@ -186,8 +183,7 @@ def tournament_reject(request):
 
     #if the tournament is in progress, remove this option
     if tournament.status != u'org':
-         return JsonResponse({ u'success' : False, u'error' : "You cannot remove a team once the tournament has started")
-    #    return HttpResponse("You cannot remove a team once the tournament has started")
+        return HttpResponse("You cannot remove a team once the tournament has started")
 
     #if there is problems with the logic catch exception and show errors
     try:

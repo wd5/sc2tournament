@@ -61,12 +61,12 @@ var elem = document.getElementById('myCanvas');
 if (elem && elem.getContext) {
   // Get the 2d context.
   // Remember: you can only initialize one context per element.
-  var context = elem.getContext('2d');
+ // var context = elem.getContext('2d');
   if (context) {
     // You are done! Now you can draw your first rectangle.
     // You only need to provide the (x,y) coordinates, followed by the width and 
     // height dimensions.
-    context.fillRect(0, 0, 150, 100);
+   // context.fillRect(0, 0, 150, 100);
   }
 }
 </script>
@@ -157,14 +157,46 @@ if (elem && elem.getContext) {
 
 
 <div id="svg">
-
 </div>
 <script>
-      function getBadge(badge_id) {
-          // Nine arguments: the element, source (x,y) coordinates, source width and 
-          // height (for cropping), destination (x,y) coordinates, and destination width 
-          // and height (resize).
-          context.drawImage(img_elem, sx, sy, sw, sh, dx, dy, dw, dh);
+$(document).ready( function() {
+      $(document).delay(1000).queue(function() {
+	var myImage = getBadge(1,2);
+    });
+});
+function draw() {
+  var ctx = document.getElementById('myCanvas').getContext('2d');
+  var img = new Image();
+  img.src = '{{ STATIC_URL }}img/portraits-0-75.jpg';
+  img.onload = function(){
+    for (i=0;i<4;i++){
+      for (j=0;j<3;j++){
+        ctx.drawImage(img,j*50,i*38,50,38);
+      }
+    }
+  }
+}
+      function getBadge(row, column) {
+	  var img_elem = new Image();
+	  img_elem.src = "{{ STATIC_URL }}img/portraits-0-75.jpg";
+	  //img_elem = $("<img />").attr("src", img_elem)[0];
+	  //img_elem = $("#canvasimg")[0];
+	  var thisCanvas = $("<canvas />").attr("width", 75).attr("height", 75)[0];
+	  context = thisCanvas.getContext('2d');
+	  var sx = column*75;
+	  var sy = row*75;
+	  var sw = 75;
+	  var sh = 75;
+	  var dx = 0;
+	  var dy = 0;
+	  var dw = 75;
+	  var dh = 75;
+          img_elem.onload = function() {
+	      context.drawImage(img_elem, sx, sy, sw, sh, dx, dy, dw, dh);
+	      var returnImageElem = $("<img />").attr("src",importCanvas(thisCanvas));
+	      $("#admin").append(returnImageElem);
+	  }
+	  //return ???;
       }
       function renderSvg() {
            var paper = Raphael("svg", 500,500);

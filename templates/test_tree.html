@@ -18,7 +18,7 @@
     <script type="text/javascript">
     /* Get variables from template and use this to render tournament */
     $(document).ready(function() {
-		renderTournament({{ tournament_id }});
+		//renderTournament({{ tournament_id }});
 		//setInterval(function (){ renderTournament({{ tournament_id }}); }, 0000);
 	});
     </script>
@@ -26,7 +26,50 @@
 <body>
 <h1>Tournament #{{ tournament_id }} - {{ t.name }} # {{ t.status }}</h1>
 
+{# Canvas stuff ... #}
 
+<canvas id="myCanvas" width="300" height="150">
+Fallback content, in case the browser does not support Canvas.
+</canvas>
+<script>
+  function importCanvas(sourceCanvas, targetSVG) {
+      // get base64 encoded png data url from Canvas
+      var img_dataurl = sourceCanvas.toDataURL("image/png");
+  
+      var svg_img = document.createElementNS(
+          "http://www.w3.org/2000/svg", "image");
+      return img_dataurl; 
+      /*
+      svg_img.setAttributeNS(
+          "http://www.w3.org/1999/xlink", "xlink:href", img_dataurl);
+  
+      targetSVG.appendChild(svg_img);*/
+  }
+  $(document).ready().delay(2000).queue( function() {
+          importCanvas(document.getElementById('myCanvas'), $('#canvas').children('svg')[0]);
+  }).delay(2000).queue( function() {
+          renderSvg();
+          //$("#canvas").children('svg').children('image').attr("x","730").attr("y","498").attr("width","200").attr("height","200");
+  });
+</script>
+<script>
+// Get a reference to the element.
+var elem = document.getElementById('myCanvas');
+
+// Always check for properties and methods, to make sure your code doesn't break 
+// in other browsers.
+if (elem && elem.getContext) {
+  // Get the 2d context.
+  // Remember: you can only initialize one context per element.
+  var context = elem.getContext('2d');
+  if (context) {
+    // You are done! Now you can draw your first rectangle.
+    // You only need to provide the (x,y) coordinates, followed by the width and 
+    // height dimensions.
+    context.fillRect(0, 0, 150, 100);
+  }
+}
+</script>
 {# Check to see if we should show them the admin stuff #}
 {% ifequal t.organized_by.id request.user.id %}
 <style type="text/css">
@@ -101,7 +144,7 @@
 		{% csrf_token %}
 		<input type="hidden" name="value" value="yes" />
 		<input type="hidden" name="tournament_id" value="{{ t.id }}" />
-		<!--<input type="submit" value="Start the Tournament!" />-->
+		<input type="submit" value="Start the Tournament!" />
 	</form>	
 </div>
 {% endifequal %}
@@ -111,5 +154,22 @@
 <div id="canvas"></div>
 {% endifnotequal %}
 <div style="clear:both"></div>
+
+
+<div id="svg">
+
+</div>
+<script>
+      function getBadge(badge_id) {
+          // Nine arguments: the element, source (x,y) coordinates, source width and 
+          // height (for cropping), destination (x,y) coordinates, and destination width 
+          // and height (resize).
+          context.drawImage(img_elem, sx, sy, sw, sh, dx, dy, dw, dh);
+      }
+      function renderSvg() {
+           var paper = Raphael("svg", 500,500);
+           var img = paper.image(importCanvas($("myCanvas")[0]), 0,0,270,270);
+       }
+</script>
 </body>
 </html>

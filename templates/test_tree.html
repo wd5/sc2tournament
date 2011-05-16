@@ -27,10 +27,6 @@
 <h1>Tournament #{{ tournament_id }} - {{ t.name }} # {{ t.status }}</h1>
 
 {# Canvas stuff ... #}
-
-<canvas id="myCanvas" width="300" height="150">
-Fallback content, in case the browser does not support Canvas.
-</canvas>
 <script>
   function importCanvas(sourceCanvas, targetSVG) {
       // get base64 encoded png data url from Canvas
@@ -45,31 +41,8 @@ Fallback content, in case the browser does not support Canvas.
   
       targetSVG.appendChild(svg_img);*/
   }
-  $(document).ready().delay(2000).queue( function() {
-          importCanvas(document.getElementById('myCanvas'), $('#canvas').children('svg')[0]);
-  }).delay(2000).queue( function() {
-          renderSvg();
-          //$("#canvas").children('svg').children('image').attr("x","730").attr("y","498").attr("width","200").attr("height","200");
-  });
 </script>
-<script>
-// Get a reference to the element.
-var elem = document.getElementById('myCanvas');
 
-// Always check for properties and methods, to make sure your code doesn't break 
-// in other browsers.
-if (elem && elem.getContext) {
-  // Get the 2d context.
-  // Remember: you can only initialize one context per element.
- // var context = elem.getContext('2d');
-  if (context) {
-    // You are done! Now you can draw your first rectangle.
-    // You only need to provide the (x,y) coordinates, followed by the width and 
-    // height dimensions.
-   // context.fillRect(0, 0, 150, 100);
-  }
-}
-</script>
 {# Check to see if we should show them the admin stuff #}
 {% ifequal t.organized_by.id request.user.id %}
 <style type="text/css">
@@ -155,34 +128,26 @@ if (elem && elem.getContext) {
 {% endifnotequal %}
 <div style="clear:both"></div>
 
-
+<img src="{{ STATIC_URL }}img/portraits-0-75.jpg" style="display:none" id="cImage" />
 <div id="svg">
 </div>
 <script>
-$(document).ready( function() {
-      $(document).delay(1000).queue(function() {
-	var myImage = getBadge(1,2);
-    });
-});
-function draw() {
-  var ctx = document.getElementById('myCanvas').getContext('2d');
-  var img = new Image();
-  img.src = '{{ STATIC_URL }}img/portraits-0-75.jpg';
-  img.onload = function(){
-    for (i=0;i<4;i++){
-      for (j=0;j<3;j++){
-        ctx.drawImage(img,j*50,i*38,50,38);
-      }
-    }
-  }
-}
-      function getBadge(row, column) {
+      $(document).ready( function() {
+	    var iter = 0;
+	    for (var k=0;k<2;k++) {
+	      for (var i=0;i<6;i++) {
+		  for(var j=0;j<6;j++) {
+		    getBadge(i,j,k);
+		  }
+	      }
+	  }
+      });
+      function getBadge(row, column, series, size) {
+	  // Thankfully, the browser only requests this image once
 	  var img_elem = new Image();
-	  img_elem.src = "{{ STATIC_URL }}img/portraits-0-75.jpg";
-	  //img_elem = $("<img />").attr("src", img_elem)[0];
-	  //img_elem = $("#canvasimg")[0];
-	  var thisCanvas = $("<canvas />").attr("width", 75).attr("height", 75)[0];
-	  context = thisCanvas.getContext('2d');
+	  size = size == null ? 75 : size;
+	  img_elem.src = "{{ STATIC_URL }}img/portraits-" + series + "-" + size + ".jpg";
+	  // Some variables that will likely be changing a bit
 	  var sx = column*75;
 	  var sy = row*75;
 	  var sw = 75;
@@ -192,11 +157,13 @@ function draw() {
 	  var dw = 75;
 	  var dh = 75;
           img_elem.onload = function() {
+	      var thisCanvas = $("<canvas />").attr("width", 75).attr("height", 75)[0];
+	      context = thisCanvas.getContext('2d');
 	      context.drawImage(img_elem, sx, sy, sw, sh, dx, dy, dw, dh);
-	      var returnImageElem = $("<img />").attr("src",importCanvas(thisCanvas));
-	      $("#admin").append(returnImageElem);
+	      var returnImageElem = $("<img />").attr("src",thisCanvas.toDataURL());
+	      $(returnImageElem).attr("alt", "Row: " +row+ ", column: " + column + ", series: " + series);
+	      $("#svg").append(returnImageElem).append(" ");
 	  }
-	  //return ???;
       }
       function renderSvg() {
            var paper = Raphael("svg", 500,500);

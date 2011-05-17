@@ -7,7 +7,7 @@
     <script type="text/javascript" src="{{ STATIC_URL }}js/dracula_algorithms.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}js/binary_tree.js"></script>
     <script type="text/javascript" src="{{ STATIC_URL }}js/tourney_manage.js"></script>
-    {# Let's host this locally asap #}
+    {# Let's host this locally asap #} 
     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.8.12/jquery-ui.min.js"></script>
     <link rel="stylesheet" type="text/css" href="{{ STATIC_URL }}css/login.css" />
     <style type="text/css">
@@ -18,7 +18,7 @@
     <script type="text/javascript">
     /* Get variables from template and use this to render tournament */
     $(document).ready(function() {
-		renderTournament({{ tournament_id }});
+		//renderTournament({{ tournament_id }});
 		//setInterval(function (){ renderTournament({{ tournament_id }}); }, 0000);
 	});
     </script>
@@ -26,6 +26,22 @@
 <body>
 <h1>Tournament #{{ tournament_id }} - {{ t.name }} # {{ t.status }}</h1>
 
+{# Canvas stuff ... #}
+<script>
+  function importCanvas(sourceCanvas, targetSVG) {
+      // get base64 encoded png data url from Canvas
+      var img_dataurl = sourceCanvas.toDataURL("image/png");
+  
+      var svg_img = document.createElementNS(
+          "http://www.w3.org/2000/svg", "image");
+      return img_dataurl; 
+      /*
+      svg_img.setAttributeNS(
+          "http://www.w3.org/1999/xlink", "xlink:href", img_dataurl);
+  
+      targetSVG.appendChild(svg_img);*/
+  }
+</script>
 
 {# Check to see if we should show them the admin stuff #}
 {% ifequal t.organized_by.id request.user.id %}
@@ -57,7 +73,7 @@
 	<p>Click on the team name to accept or reject this team into your tournament...</p>
 	<div id="error"> 
 	</div>
-	<div id="pending_teams">
+	<div id="pending_teams" data-post-url="{% url sc2tournament.views.tournament_accept %}">
 		<ul id="pending_list">
 			<lh>Teams Pending</lh>
 		{% for team in t.pending_teams.all %}
@@ -77,7 +93,7 @@
 		{% endfor %}
 		</ul>
 	</div>
-	<div id="accepted_teams">
+	<div id="accepted_teams" data-post-url="{% url sc2tournament.views.tournament_reject %}">
 		<ul id="accepted_list">
 			<lh>Teams accepted</lh>
 		{% for team in t.competing_teams.all %}
@@ -101,7 +117,7 @@
 		{% csrf_token %}
 		<input type="hidden" name="value" value="yes" />
 		<input type="hidden" name="tournament_id" value="{{ t.id }}" />
-		<!--<input type="submit" value="Start the Tournament!" />-->
+		<input type="submit" value="Start the Tournament!" />
 	</form>	
 </div>
 {% endifequal %}
@@ -111,5 +127,48 @@
 <div id="canvas"></div>
 {% endifnotequal %}
 <div style="clear:both"></div>
+
+<img src="{{ STATIC_URL }}img/portraits-0-75.jpg" style="display:none" id="cImage" />
+<div id="svg">
+</div>
+<script>
+      $(document).ready( function() {
+	    var iter = 0;
+	    for (var k=0;k<2;k++) {
+	      for (var i=0;i<6;i++) {
+		  for(var j=0;j<6;j++) {
+		    getBadge(i,j,k);
+		  }
+	      }
+	  }
+      });
+      function getBadge(row, column, series, size) {
+	  // Thankfully, the browser only requests this image once
+	  var img_elem = new Image();
+	  size = size == null ? 75 : size;
+	  img_elem.src = "{{ STATIC_URL }}img/portraits-" + series + "-" + size + ".jpg";
+	  // Some variables that will likely be changing a bit
+	  var sx = column*75;
+	  var sy = row*75;
+	  var sw = 75;
+	  var sh = 75;
+	  var dx = 0;
+	  var dy = 0;
+	  var dw = 75;
+	  var dh = 75;
+          img_elem.onload = function() {
+	      var thisCanvas = $("<canvas />").attr("width", 75).attr("height", 75)[0];
+	      context = thisCanvas.getContext('2d');
+	      context.drawImage(img_elem, sx, sy, sw, sh, dx, dy, dw, dh);
+	      var returnImageElem = $("<img />").attr("src",thisCanvas.toDataURL());
+	      $(returnImageElem).attr("alt", "Row: " +row+ ", column: " + column + ", series: " + series);
+	      $("#svg").append(returnImageElem).append(" ");
+	  }
+      }
+      function renderSvg() {
+           var paper = Raphael("svg", 500,500);
+           var img = paper.image(importCanvas($("myCanvas")[0]), 0,0,270,270);
+       }
+</script>
 </body>
 </html>

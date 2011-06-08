@@ -59,6 +59,36 @@ TEAM_SIZES = [
     (4, u'4v4'),
 ]
 
+class Seed(models.Model):
+    """ 
+    This class stores the relation between team, tournament, and seed.
+    Because a team can have many tournaments, seed cannot be attached
+    to the player class - and also, should not be attached to the 
+    tournament class.
+    """
+    team = models.ForeignKey(Team, help_text='The team that is seeded')
+    tournament = models.ForeignKey(Tournament, help_text='The tournament\
+                                    in which the team is seeded')
+    seed = models.IntegerField(null=False, help_text='The seed')
+    
+    class Meta:
+        # Doesn't allow more than one of the same seed per tourney
+        unique_together = (
+            ('tournament', 'seed'),
+        )
+        db_table = 'seeds'
+        
+    @staticmethod
+    def createSeed(team, tournament, seed):
+        # Accepts team, tournament, seed.
+        return Seed(team=team, tournament=tournament, seed=seed)
+         
+    def __unicode__:
+        # Meh ... this could look ugly.
+        return "Team " + str(team) + " has a seed of " + str(seed) + \
+                " in tournament " + str(tournament)
+    
+
 class Player(models.Model):
     """ Only name and character_code is required. battlenet_id will be pop- """
     """ ulated later """
@@ -267,7 +297,7 @@ class Membership(models.Model):
 
 class Tournament(models.Model):
     """
-    Tounraments are a grouping of teams competing at a given date and time.
+    Tournaments are a grouping of teams competing at a given date and time.
     """
     name = models.CharField(max_length=80, blank=False,
                             help_text='The visible name of the tournament')
@@ -279,6 +309,7 @@ class Tournament(models.Model):
     pending_teams = models.ManyToManyField(Team,
                                            related_name='pending_tournaments',
                                            help_text='Waiting approval')
+    seeds = models.ManyToManyField(Seed, help_text='The seeds for the tourney')
     time_created = models.DateTimeField(auto_now_add=True)
     status = models.CharField(max_length=4, choices=TOURNAMENT_STATUS,
                               default=TOURNAMENT_STATUS[0][0],
@@ -409,7 +440,22 @@ class Tournament(models.Model):
 
         self.competing_teams.remove(team)
         self.pending_teams.add(team)
-
+    def seed_team(self, team, seed):
+        """
+        This method takes a team and a seed (int) and will give that team
+        a seed if it's within the range of the tournament and not
+        already given to another team
+        """
+        seed = Seed.createSeed(self, team, seed)
+        
+        # Deal with the unique key issue. Check if the seed exists.
+        # If it doesn't, insert it. If it does, update it (remove + add)
+        if seed not in self.seeds.all():
+            self.seeds.add(seed)
+        else
+            self.seeds.remove(seed)
+            self.seeds.add(seed)
+        
     def win_set(self, team):
         """
         When a team wins a set, this method will promote them to next bracket
@@ -521,7 +567,7 @@ class Tournament(models.Model):
         
         raise ValueError('Could not find team \'%s\' in tournament \'%s\'' % 
                         (team.name, self.name))
-
+                        
     def start_tournament(self):
         """
         Starts a tournament.

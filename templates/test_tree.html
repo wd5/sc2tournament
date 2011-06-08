@@ -73,12 +73,12 @@
 	<p>Click on the team name to accept or reject this team into your tournament...</p>
 	<div id="error"> 
 	</div>
-	<div id="pending_teams" data-post-url="{% url sc2tournament.views.tournament_accept %}">
+	<div id="pending_teams" data-post-url="{% url sc2tournament.views.tournament_toggle %}">
 		<ul id="pending_list">
 			<lh>Teams Pending</lh>
 		{% for team in t.pending_teams.all %}
 			<li>
-				<form id="form_accept_{{ team.id }}" method="post" action="{% url sc2tournament.views.tournament_accept %}">
+				<form id="form_accept_{{ team.id }}" method="post" action="{% url sc2tournament.views.tournament_toggle %}">
 					{% csrf_token %}
 					<input type="hidden" name="team_id" value="{{ team.id }}" />
 					<input type="hidden" name="tournament_id" value="{{ t.id }}" />
@@ -93,12 +93,12 @@
 		{% endfor %}
 		</ul>
 	</div>
-	<div id="accepted_teams" data-post-url="{% url sc2tournament.views.tournament_reject %}">
+	<div id="accepted_teams" data-post-url="{% url sc2tournament.views.tournament_toggle %}">
 		<ul id="accepted_list">
 			<lh>Teams accepted</lh>
 		{% for team in t.competing_teams.all %}
 			<li>
-				<form id="form_reject_{{ team.id }}" method="post" action="{% url sc2tournament.views.tournament_reject %}">
+				<form id="form_reject_{{ team.id }}" method="post" action="{% url sc2tournament.views.tournament_toggle %}">
 					{% csrf_token %}
 					<input type="hidden" name="team_id" value="{{ team.id }}" />
 					<input type="hidden" name="tournament_id" value="{{ t.id }}" />

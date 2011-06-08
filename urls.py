@@ -15,6 +15,7 @@ urlpatterns = patterns('sc2tournament.views',
     (r'^tournament/accept/$', 'tournament_accept'),
     (r'^tournament/reject/$', 'tournament_reject'),
     (r'^tournament/start/$', 'tournament_start'),
+    (r'^tournament/toggle/$', 'tournament_toggle'),
     #---Page Related Functions---#
     (r'^tournament/create/$','tournament_create'),
     (r'^team/create/$', 'team_create'),

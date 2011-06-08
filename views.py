@@ -131,7 +131,54 @@ def tournament_join(request):
                               context_instance=RequestContext(request))
 
 
-
+@login_required
+def tournament_toggle(request):
+    """
+    If a team is currently accepted, reject them, and vice versa.
+    """
+    # Get the user submitting the request
+    user = request.user.get_profile()
+    
+    # Instantiate the JSON response object
+    response = {} 
+    
+    # Get the team that is getting toggled
+    team = Team.objects.get(pk=request.REQUEST['team_id'])
+    tournament = Tournament.objects.get(pk=request.REQUEST['tournament_id'])
+    
+    # If the person toggling is not in charge of the tournament
+    if user != tournament.organized_by:
+        response['status'] = "error"
+        response['message'] = "You are not the creator of this\
+            tournament, and therefore cannot manage it."
+        return JsonResponse(response)
+    try: 
+        # Find if the team is accepted or rejected in the tournament
+        if team in tournament.pending_teams.all():
+            # Accept the team
+            tournament.accept_team(team)
+            response['status'] = "success"
+            response['message'] = str(team) + " was successfully\
+                accepted to the tournament"
+        elif team in tournament.competing_teams.all():
+            # Pend the team
+            tournament.reject_team(team)
+            response['status'] = "success"
+            response['message'] = str(team) + " was successfully\
+                rejected from the tournament"
+        # Team is not in tournament
+        else:
+            response['status'] = "error"
+            response['message'] = "The team you tried to toggle has not\
+                been added to the tournament."
+    # There may be an exception that we're not accounting for
+    except Exception as e:
+        response['status'] = "error"
+        response['message'] = e
+        return JsonResponse(response)
+    # If there's no exception, return the response
+    return JsonResponse(response)
+    
 @login_required
 def tournament_accept(request):
     """

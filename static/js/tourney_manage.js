@@ -32,19 +32,27 @@ $(document).ready(function() {
               cache: false, 
               //success
               success: function(html) {
+                    console.log(html);
         		    // error checking
-        		    if (html.indexOf('<html>') != -1) {
-              		$('.ajax-loading').children('form').attr("action", $('.ajax-loading').parents('div').attr("data-post-url"));
-                    	$('.ajax-loading').removeClass("ajax-loading").removeClass("loading");
-                    	$('.ajax-loading').toggleClass("pending").toggleClass("accepted");
-        		    } else {
-          			$("#error").text("There was an error! " + html);
-          			$("#error").fadeIn();
-          			$("#error").click(function () {
-          			    $(this).fadeOut();
-          			}); 
-        		    }
-	      }
+        		    if (html.status == "success") {
+                  		$('.ajax-loading').children('form').attr("action", $('.ajax-loading').parents('div').attr("data-post-url"));
+                        	$('.ajax-loading').removeClass("ajax-loading").removeClass("loading");
+                        	$('.ajax-loading').toggleClass("pending").toggleClass("accepted");
+        		    } else if (html.status == "error") {
+              			$("#error").text("There was an error! " + html.message);
+              			$("#error").fadeIn();
+              			$("#error").click(function () {
+              			    $(this).fadeOut();
+              			}); 
+		            } else {
+		                alert("Something went terribly wrong.");
+		            }
+		      },
+	        statusCode: {
+             500: function() {
+                     alert('page not found');
+                }
+             }
 	    });
 	    return returnString.value;
 	};
